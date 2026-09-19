@@ -11,20 +11,41 @@ import { refreshMscSchedules } from "../lib/msc-scraper";
 const router: IRouter = Router();
 let refreshInFlight: Promise<Awaited<ReturnType<typeof refreshMscSchedules>>> | null = null;
 
+class ScheduleQueryValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ScheduleQueryValidationError";
+  }
+}
+
+const parseDepartureDate = (value: unknown, parameterName: "departureFrom" | "departureTo"): Date | undefined => {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new ScheduleQueryValidationError(`${parameterName} must be a valid date in YYYY-MM-DD format.`);
+  }
+
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+    throw new ScheduleQueryValidationError(`${parameterName} must be a valid date in YYYY-MM-DD format.`);
+  }
+  return date;
+};
+
 const buildResponse = async (query: Record<string, unknown>) => {
   const parsed = GetSchedulesQueryParams.safeParse({
     ...query,
-    departureFrom:
-      typeof query.departureFrom === "string"
-        ? new Date(`${query.departureFrom}T00:00:00.000Z`)
-        : query.departureFrom,
-    departureTo:
-      typeof query.departureTo === "string"
-        ? new Date(`${query.departureTo}T00:00:00.000Z`)
-        : query.departureTo,
+    departureFrom: parseDepartureDate(query.departureFrom, "departureFrom"),
+    departureTo: parseDepartureDate(query.departureTo, "departureTo"),
   });
   if (!parsed.success) {
-    throw new Error(parsed.error.message);
+    throw new ScheduleQueryValidationError("Invalid schedule query parameters.");
+  }
+  if (
+    parsed.data.departureFrom &&
+    parsed.data.departureTo &&
+    parsed.data.departureFrom > parsed.data.departureTo
+  ) {
+    throw new ScheduleQueryValidationError("departureFrom must be on or before departureTo.");
   }
   const cache = await readScheduleCache();
   const destinationTerms = (parsed.data.destination ?? "")
@@ -63,6 +84,10 @@ router.get("/schedules", async (req, res): Promise<void> => {
     const response = await buildResponse(req.query);
     res.json(response);
   } catch (error) {
+    if (error instanceof ScheduleQueryValidationError) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
     req.log.error({ err: error }, "Unable to read schedule cache");
     res.status(500).json({ error: "Unable to read schedule cache." });
   }

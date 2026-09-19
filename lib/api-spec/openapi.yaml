@@ -43,6 +43,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ScheduleResponse"
+        "400":
+          description: Invalid or reversed departure date filters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Unable to read schedule cache
           content:
@@ -96,7 +102,7 @@ components:
       schema:
         type: string
         format: date
-      description: Earliest departure date, inclusive
+      description: Earliest departure date, inclusive. Must use YYYY-MM-DD and be on or before departureTo.
     DepartureToQuery:
       name: departureTo
       in: query
@@ -104,7 +110,7 @@ components:
       schema:
         type: string
         format: date
-      description: Latest departure date, inclusive
+      description: Latest departure date, inclusive. Must use YYYY-MM-DD and be on or after departureFrom.
   schemas:
     HealthStatus:
       type: object

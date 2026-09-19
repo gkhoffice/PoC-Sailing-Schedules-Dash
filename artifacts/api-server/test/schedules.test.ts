@@ -176,3 +176,29 @@ test("departureTo includes the boundary date and excludes later sailings", async
   );
   assert.ok(body.schedules.every((schedule) => schedule.departureDate?.slice(0, 10) <= "2026-10-03"));
 });
+
+test("malformed departureFrom returns a client validation error", async () => {
+  const response = await fetch(`${baseUrl}/api/schedules?departureFrom=not-a-date`);
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), {
+    error: "departureFrom must be a valid date in YYYY-MM-DD format.",
+  });
+});
+
+test("malformed departureTo returns a client validation error", async () => {
+  const response = await fetch(`${baseUrl}/api/schedules?departureTo=2026-02-30`);
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), {
+    error: "departureTo must be a valid date in YYYY-MM-DD format.",
+  });
+});
+
+test("reversed departure date ranges return a client validation error", async () => {
+  const response = await fetch(
+    `${baseUrl}/api/schedules?departureFrom=2026-10-04&departureTo=2026-10-03`,
+  );
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), {
+    error: "departureFrom must be on or before departureTo.",
+  });
+});
