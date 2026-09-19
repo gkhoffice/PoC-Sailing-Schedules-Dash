@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: schedules
+    description: MSC vessel sailing schedule operations
 paths:
   /healthz:
     get:
@@ -24,7 +26,85 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /schedules:
+    get:
+      operationId: getSchedules
+      tags: [schedules]
+      summary: Get cached MSC sailing schedules
+      description: Returns the latest successfully cached MSC schedules originating from Port Louis, Mauritius.
+      parameters:
+        - $ref: "#/components/parameters/DestinationQuery"
+        - $ref: "#/components/parameters/DepartureFromQuery"
+        - $ref: "#/components/parameters/DepartureToQuery"
+      responses:
+        "200":
+          description: Cached schedule results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleResponse"
+        "500":
+          description: Unable to read schedule cache
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /schedules/summary:
+    get:
+      operationId: getScheduleSummary
+      tags: [schedules]
+      summary: Get schedule summary metrics
+      responses:
+        "200":
+          description: Summary of the cached schedule results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleSummary"
+  /schedules/refresh:
+    post:
+      operationId: refreshSchedules
+      tags: [schedules]
+      summary: Refresh MSC sailing schedules
+      description: Opens the MSC schedule interface with Playwright, captures the schedule response, normalizes it, and updates the local JSON cache.
+      responses:
+        "200":
+          description: Refreshed schedule results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleResponse"
+        "502":
+          description: MSC refresh failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
+  parameters:
+    DestinationQuery:
+      name: destination
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Case-insensitive destination search text
+    DepartureFromQuery:
+      name: departureFrom
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+      description: Earliest departure date, inclusive
+    DepartureToQuery:
+      name: departureTo
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+      description: Latest departure date, inclusive
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +113,90 @@ components:
           type: string
       required:
         - status
+    Schedule:
+      type: object
+      properties:
+        id:
+          type: string
+        origin:
+          type: string
+        destination:
+          type: string
+        vessel:
+          type: string
+        voyage:
+          type: string
+        departureDate:
+          type: ["string", "null"]
+          format: date
+        arrivalDate:
+          type: ["string", "null"]
+          format: date
+        transitTime:
+          type: ["string", "null"]
+        service:
+          type: ["string", "null"]
+      required:
+        - id
+        - origin
+        - destination
+        - vessel
+        - voyage
+        - departureDate
+        - arrivalDate
+        - transitTime
+        - service
+    ScheduleResponse:
+      type: object
+      properties:
+        schedules:
+          type: array
+          items:
+            $ref: "#/components/schemas/Schedule"
+        lastUpdated:
+          type: ["string", "null"]
+          format: date-time
+        source:
+          type: string
+        isStale:
+          type: boolean
+        count:
+          type: integer
+      required:
+        - schedules
+        - lastUpdated
+        - source
+        - isStale
+        - count
+    ScheduleSummary:
+      type: object
+      properties:
+        count:
+          type: integer
+        destinationCount:
+          type: integer
+        vesselCount:
+          type: integer
+        nextDeparture:
+          type: ["string", "null"]
+          format: date
+        lastUpdated:
+          type: ["string", "null"]
+          format: date-time
+        isStale:
+          type: boolean
+      required:
+        - count
+        - destinationCount
+        - vesselCount
+        - nextDeparture
+        - lastUpdated
+        - isStale
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
 

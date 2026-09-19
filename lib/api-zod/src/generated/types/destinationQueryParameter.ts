@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface HealthStatus {
-  status: string;
-}
+/**
+ * Case-insensitive destination search text
+ */
+export type DestinationQueryParameter = string;

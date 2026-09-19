@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "MSC Sailing Schedules"
+description = "A responsive dashboard that retrieves and filters the latest MSC vessel sailing schedules from Port Louis, Mauritius, with cached results and on-demand refresh."
+version = "1.0.0"
+id = "artifacts/msc-schedules"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25738
+
+[services.development]
+run = "pnpm --filter @workspace/msc-schedules run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/msc-schedules", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/msc-schedules/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25738"
+BASE_PATH = "/"
