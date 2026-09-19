@@ -32,6 +32,11 @@ type Filters = {
   departureTo?: string;
 };
 
+type FilterOption = {
+  value: string;
+  kind: 'Port' | 'Country';
+};
+
 const formatDate = (value: string | null | undefined, compact = false) => {
   if (!value) return '—';
   const date = new Date(value);
@@ -114,9 +119,34 @@ function Dashboard() {
   }), [filters]);
 
   const schedulesQuery = useGetSchedules(params);
+  const filterOptionsQuery = useGetSchedules({});
   const summaryQuery = useGetScheduleSummary();
   const refreshMutation = useRefreshSchedules();
   const schedules = schedulesQuery.data?.schedules ?? [];
+  const filterOptions = useMemo(() => {
+    const options = new Map<string, FilterOption>();
+    const addOption = (value: string | null | undefined, kind: FilterOption['kind']) => {
+      const trimmed = value?.trim();
+      if (!trimmed) return;
+      const key = trimmed.toLowerCase();
+      if (!options.has(key)) options.set(key, { value: trimmed, kind });
+    };
+
+    for (const schedule of filterOptionsQuery.data?.schedules ?? []) {
+      addOption(schedule.destination, 'Port');
+      addOption(schedule.destinationCountry, 'Country');
+    }
+    return [...options.values()].sort((left, right) => left.value.localeCompare(right.value));
+  }, [filterOptionsQuery.data?.schedules]);
+  const destinationSuggestions = useMemo(() => {
+    const query = destinationInput.trim().toLowerCase();
+    if (!query) return [];
+    const selected = new Set((draft.destinations ?? []).map((destination) => destination.toLowerCase()));
+    return filterOptions
+      .filter((option) => option.value.toLowerCase().includes(query) && !selected.has(option.value.toLowerCase()))
+      .slice(0, 8);
+  }, [destinationInput, draft.destinations, filterOptions]);
+  const showDestinationSuggestions = destinationInput.trim().length > 0 && destinationSuggestions.length > 0;
   const activeFilterCount = [
     Boolean(filters.destinations?.length),
     Boolean(filters.departureFrom),
@@ -139,8 +169,8 @@ function Dashboard() {
     setShowFilters(false);
   };
 
-  const addDestination = () => {
-    const value = destinationInput.trim();
+  const addDestination = (rawValue = destinationInput) => {
+    const value = rawValue.trim();
     if (!value) return;
     const destinations = draft.destinations ?? [];
     if (destinations.some((destination) => destination.toLowerCase() === value.toLowerCase())) {
