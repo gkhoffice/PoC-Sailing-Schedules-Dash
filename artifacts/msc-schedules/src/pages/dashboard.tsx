@@ -14,7 +14,6 @@ import {
   RefreshCw,
   Search,
   ShipWheel,
-  SlidersHorizontal,
   Waves,
   X,
 } from 'lucide-react';
@@ -288,9 +287,9 @@ function Dashboard() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {hasFilters && <button data-testid="button-clear-filters" type="button" onClick={clearFilters} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"><X className="h-3.5 w-3.5" /> Clear filters</button>}
+                {hasFilters && <button data-testid="button-clear-filters" type="button" onClick={clearFilters} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"><X className="h-3.5 w-3.5" /> Clear search</button>}
                 <button data-testid="button-toggle-filters" type="button" onClick={() => setShowFilters(!showFilters)} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${showFilters || hasFilters ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border bg-card text-foreground hover:bg-secondary'}`}>
-                  <SlidersHorizontal className="h-4 w-4" /> Filters <span className="font-mono text-xs">{hasFilters ? String(activeFilterCount).padStart(2, '0') : ''}</span>
+                  <Search className="h-4 w-4" /> Search <span className="font-mono text-xs">{hasFilters ? String(activeFilterCount).padStart(2, '0') : ''}</span>
                 </button>
               </div>
             </div>
@@ -359,7 +358,7 @@ function Dashboard() {
                   <span className="eyebrow text-muted-foreground">Departing to</span>
                   <input data-testid="input-departure-to" type="date" value={draft.departureTo ?? ''} onChange={(event) => setDraft({ ...draft, departureTo: event.target.value })} className="mt-2 h-10 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15" />
                 </label>
-                <button data-testid="button-apply-filters" type="submit" className="h-10 rounded-lg bg-sidebar px-4 text-sm font-bold text-sidebar-foreground transition-colors hover:bg-sidebar/90">Apply</button>
+                <button data-testid="button-apply-filters" type="submit" className="h-10 rounded-lg bg-sidebar px-4 text-sm font-bold text-sidebar-foreground transition-colors hover:bg-sidebar/90">Search</button>
               </form>
             )}
 
@@ -377,7 +376,7 @@ function Dashboard() {
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-primary"><Filter className="h-5 w-5" /></div>
                 <h3 className="mt-4 font-bold">No sailings match this view</h3>
                 <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">Try widening the destination or departure window. The carrier cache may also be between updates.</p>
-                {hasFilters && <button data-testid="button-empty-clear-filters" type="button" onClick={clearFilters} className="mt-5 rounded-lg border border-border bg-card px-4 py-2 text-sm font-bold transition-colors hover:bg-secondary">Clear filters</button>}
+                {hasFilters && <button data-testid="button-empty-clear-filters" type="button" onClick={clearFilters} className="mt-5 rounded-lg border border-border bg-card px-4 py-2 text-sm font-bold transition-colors hover:bg-secondary">Clear search</button>}
               </div>
             ) : (
               <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-[0_12px_30px_hsl(202_50%_17%/0.05)]">
