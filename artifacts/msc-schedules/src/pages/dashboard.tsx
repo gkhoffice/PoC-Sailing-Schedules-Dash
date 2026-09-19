@@ -1,5 +1,6 @@
-import { type FormEvent, type ReactNode, useMemo, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import {
   Anchor,
   ArrowDownToLine,
@@ -34,6 +35,30 @@ type Filters = {
 type FilterOption = {
   value: string;
   kind: 'Port' | 'Country';
+};
+
+const filtersFromSearch = (search: string): Filters => {
+  const query = new URLSearchParams(search);
+  const destinations = (query.get('destination') ?? '')
+    .split(',')
+    .map((destination) => destination.trim())
+    .filter(Boolean);
+  const departureFrom = query.get('departureFrom') || undefined;
+  const departureTo = query.get('departureTo') || undefined;
+  return {
+    ...(destinations.length ? { destinations } : {}),
+    ...(departureFrom ? { departureFrom } : {}),
+    ...(departureTo ? { departureTo } : {}),
+  };
+};
+
+const manifestUrl = (filters: Filters) => {
+  const query = new URLSearchParams();
+  if (filters.destinations?.length) query.set('destination', filters.destinations.join(','));
+  if (filters.departureFrom) query.set('departureFrom', filters.departureFrom);
+  if (filters.departureTo) query.set('departureTo', filters.departureTo);
+  const encoded = query.toString();
+  return encoded ? `/manifest?${encoded}` : '/manifest';
 };
 
 const formatDate = (value: string | null | undefined, compact = false) => {
@@ -104,12 +129,20 @@ function ScheduleSkeleton() {
 }
 
 function Dashboard() {
-  const [draft, setDraft] = useState<Filters>({});
-  const [filters, setFilters] = useState<Filters>({});
+  const [location, setLocation] = useLocation();
+  const isManifestPage = location.split('?')[0] === '/manifest';
+  const [draft, setDraft] = useState<Filters>(() => filtersFromSearch(window.location.search));
+  const [filters, setFilters] = useState<Filters>(() => filtersFromSearch(window.location.search));
   const [destinationInput, setDestinationInput] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState('');
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const nextFilters = filtersFromSearch(location.includes('?') ? location.slice(location.indexOf('?')) : '');
+    setDraft(nextFilters);
+    setFilters(nextFilters);
+    setDestinationInput('');
+  }, [location]);
 
   const params = useMemo(() => ({
     ...(filters.destinations?.length ? { destination: filters.destinations.join(',') } : {}),
@@ -160,12 +193,13 @@ function Dashboard() {
     setDraft({});
     setDestinationInput('');
     setFilters({});
+    if (isManifestPage) setLocation('/');
   };
 
   const submitFilters = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFilters(draft);
-    setShowFilters(false);
+    setLocation(manifestUrl(draft));
   };
 
   const addDestination = (rawValue = destinationInput) => {
