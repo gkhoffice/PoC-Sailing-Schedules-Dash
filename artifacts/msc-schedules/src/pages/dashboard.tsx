@@ -27,7 +27,7 @@ import {
 } from '@workspace/api-client-react';
 
 type Filters = {
-  destination?: string;
+  destinations?: string[];
   departureFrom?: string;
   departureTo?: string;
 };
@@ -102,12 +102,13 @@ function ScheduleSkeleton() {
 function Dashboard() {
   const [draft, setDraft] = useState<Filters>({});
   const [filters, setFilters] = useState<Filters>({});
+  const [destinationInput, setDestinationInput] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState('');
   const queryClient = useQueryClient();
 
   const params = useMemo(() => ({
-    ...(filters.destination ? { destination: filters.destination } : {}),
+    ...(filters.destinations?.length ? { destination: filters.destinations.join(',') } : {}),
     ...(filters.departureFrom ? { departureFrom: filters.departureFrom } : {}),
     ...(filters.departureTo ? { departureTo: filters.departureTo } : {}),
   }), [filters]);
@@ -116,13 +117,19 @@ function Dashboard() {
   const summaryQuery = useGetScheduleSummary();
   const refreshMutation = useRefreshSchedules();
   const schedules = schedulesQuery.data?.schedules ?? [];
-  const hasFilters = Boolean(filters.destination || filters.departureFrom || filters.departureTo);
+  const activeFilterCount = [
+    Boolean(filters.destinations?.length),
+    Boolean(filters.departureFrom),
+    Boolean(filters.departureTo),
+  ].filter(Boolean).length;
+  const hasFilters = activeFilterCount > 0;
   const isInitialLoading = schedulesQuery.isLoading || summaryQuery.isLoading;
   const isError = schedulesQuery.isError || summaryQuery.isError;
   const stale = Boolean(schedulesQuery.data?.isStale || summaryQuery.data?.isStale);
 
   const clearFilters = () => {
     setDraft({});
+    setDestinationInput('');
     setFilters({});
   };
 
@@ -130,6 +137,25 @@ function Dashboard() {
     event.preventDefault();
     setFilters(draft);
     setShowFilters(false);
+  };
+
+  const addDestination = () => {
+    const value = destinationInput.trim();
+    if (!value) return;
+    const destinations = draft.destinations ?? [];
+    if (destinations.some((destination) => destination.toLowerCase() === value.toLowerCase())) {
+      setDestinationInput('');
+      return;
+    }
+    setDraft({ ...draft, destinations: [...destinations, value] });
+    setDestinationInput('');
+  };
+
+  const removeDestination = (value: string) => {
+    setDraft({
+      ...draft,
+      destinations: (draft.destinations ?? []).filter((destination) => destination !== value),
+    });
   };
 
   const refresh = () => {
@@ -234,7 +260,7 @@ function Dashboard() {
               <div className="flex items-center gap-2">
                 {hasFilters && <button data-testid="button-clear-filters" type="button" onClick={clearFilters} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"><X className="h-3.5 w-3.5" /> Clear filters</button>}
                 <button data-testid="button-toggle-filters" type="button" onClick={() => setShowFilters(!showFilters)} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${showFilters || hasFilters ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border bg-card text-foreground hover:bg-secondary'}`}>
-                  <SlidersHorizontal className="h-4 w-4" /> Filters <span className="font-mono text-xs">{hasFilters ? '03' : ''}</span>
+                  <SlidersHorizontal className="h-4 w-4" /> Filters <span className="font-mono text-xs">{hasFilters ? String(activeFilterCount).padStart(2, '0') : ''}</span>
                 </button>
               </div>
             </div>
@@ -243,11 +269,35 @@ function Dashboard() {
               <form data-testid="form-schedule-filters" onSubmit={submitFilters} className="mb-5 grid gap-3 rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 md:grid-cols-[1.3fr_1fr_1fr_auto] md:items-end">
                 <label className="block">
                   <span className="eyebrow text-muted-foreground">Ports or countries</span>
-                  <div className="relative mt-2">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <input data-testid="input-destination" value={draft.destination ?? ''} onChange={(event) => setDraft({ ...draft, destination: event.target.value })} placeholder="e.g. Tanzania, Kenya, Zanzibar" aria-describedby="destination-filter-help" className="h-10 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:ring-2 focus:ring-primary/15" />
+                  <div className="mt-2 flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border border-input bg-card px-2 py-1.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
+                    <Search className="ml-1 h-4 w-4 shrink-0 text-muted-foreground" />
+                    {(draft.destinations ?? []).map((destination) => (
+                      <span key={destination} className="inline-flex items-center gap-1 rounded-md bg-primary/10 py-1 pl-2 pr-1 text-xs font-semibold text-primary">
+                        {destination}
+                        <button data-testid={`button-remove-destination-${destination}`} type="button" onClick={() => removeDestination(destination)} aria-label={`Remove ${destination}`} className="rounded p-0.5 transition-colors hover:bg-primary/15">
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                    <input
+                      data-testid="input-destination"
+                      value={destinationInput}
+                      onChange={(event) => setDestinationInput(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          addDestination();
+                        }
+                      }}
+                      placeholder={(draft.destinations ?? []).length ? 'Add another' : 'Search a port or country'}
+                      aria-describedby="destination-filter-help"
+                      className="h-7 min-w-[10rem] flex-1 border-0 bg-transparent px-1 text-sm outline-none placeholder:text-muted-foreground/70"
+                    />
+                    <button data-testid="button-add-destination" type="button" onClick={addDestination} disabled={!destinationInput.trim()} className="rounded-md bg-sidebar px-2.5 py-1.5 text-xs font-bold text-sidebar-foreground transition-colors hover:bg-sidebar/90 disabled:cursor-not-allowed disabled:opacity-40">
+                      Add
+                    </button>
                   </div>
-                  <p id="destination-filter-help" className="mt-1 text-[0.68rem] text-muted-foreground">Separate multiple ports or countries with commas.</p>
+                  <p id="destination-filter-help" className="mt-1 text-[0.68rem] text-muted-foreground">Type a port or country, then click Add. Select × to remove it.</p>
                 </label>
                 <label className="block">
                   <span className="eyebrow text-muted-foreground">Departing from</span>
