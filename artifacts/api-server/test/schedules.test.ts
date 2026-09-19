@@ -86,6 +86,38 @@ test("searching by destination country returns matching sailings", async () => {
   assert.ok(body.schedules.every((schedule) => schedule.destinationCountry === "United States"));
 });
 
+test("searching by lowercase destination country is case-insensitive", async () => {
+  const response = await fetch(`${baseUrl}/api/schedules?destination=united%20states`);
+  assert.equal(response.status, 200);
+
+  const body = (await response.json()) as {
+    count: number;
+    schedules: Array<{ id: string; destinationCountry: string | null }>;
+  };
+  assert.equal(body.count, 2);
+  assert.deepEqual(
+    body.schedules.map((schedule) => schedule.id),
+    ["us-1", "us-2"],
+  );
+  assert.ok(body.schedules.every((schedule) => schedule.destinationCountry === "United States"));
+});
+
+test("searching by destination country ignores surrounding spaces", async () => {
+  const response = await fetch(`${baseUrl}/api/schedules?destination=%20%20United%20States%20%20`);
+  assert.equal(response.status, 200);
+
+  const body = (await response.json()) as {
+    count: number;
+    schedules: Array<{ id: string; destinationCountry: string | null }>;
+  };
+  assert.equal(body.count, 2);
+  assert.deepEqual(
+    body.schedules.map((schedule) => schedule.id),
+    ["us-1", "us-2"],
+  );
+  assert.ok(body.schedules.every((schedule) => schedule.destinationCountry === "United States"));
+});
+
 test("searching by an unrelated country excludes all fixture sailings", async () => {
   const response = await fetch(`${baseUrl}/api/schedules?destination=Canada`);
   assert.equal(response.status, 200);
