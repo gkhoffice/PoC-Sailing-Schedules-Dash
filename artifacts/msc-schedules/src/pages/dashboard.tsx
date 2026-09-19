@@ -9,6 +9,7 @@ import {
   Clock3,
   Container,
   Database,
+  ExternalLink,
   Filter,
   RefreshCw,
   Search,
@@ -53,6 +54,7 @@ const formatUpdated = (value: string | null | undefined) => {
 };
 
 const formatCount = (value: number | undefined) => new Intl.NumberFormat('en-US').format(value ?? 0);
+const MSC_BOOKING_URL = 'https://www.msc.com/en/lp/book-with-mymsc';
 
 function MetricCard({
   label,
@@ -276,12 +278,12 @@ function Dashboard() {
               </div>
             ) : (
               <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-[0_12px_30px_hsl(202_50%_17%/0.05)]">
-                <div className="hidden grid-cols-[1.3fr_1fr_0.8fr_0.8fr_0.65fr] gap-4 border-b border-border/70 bg-secondary/45 px-5 py-3 text-[0.65rem] font-bold uppercase tracking-[0.14em] text-muted-foreground md:grid">
-                  <span>Destination</span><span>Vessel / voyage</span><span>Departure</span><span>Arrival</span><span>Transit</span>
+                <div className="hidden grid-cols-[1.3fr_1fr_0.8fr_0.8fr_0.65fr_auto] gap-4 border-b border-border/70 bg-secondary/45 px-5 py-3 text-[0.65rem] font-bold uppercase tracking-[0.14em] text-muted-foreground md:grid">
+                  <span>Destination</span><span>Vessel / voyage</span><span>Departure</span><span>Arrival</span><span>Transit</span><span className="text-right">Book</span>
                 </div>
                 <div className="divide-y divide-border/60">
                   {schedules.map((schedule, index) => (
-                    <article data-testid={`row-schedule-${schedule.id}`} key={schedule.id} className="stagger-in grid gap-4 px-4 py-5 transition-colors duration-200 hover:bg-primary/[0.035] md:grid-cols-[1.3fr_1fr_0.8fr_0.8fr_0.65fr] md:items-center md:px-5" style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}>
+                    <article data-testid={`row-schedule-${schedule.id}`} key={schedule.id} className="stagger-in grid gap-4 px-4 py-5 transition-colors duration-200 hover:bg-primary/[0.035] md:grid-cols-[1.3fr_1fr_0.8fr_0.8fr_0.65fr_auto] md:items-center md:px-5" style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}>
                       <div className="route-line pl-5">
                         <div className="flex items-center gap-2">
                           <span className="h-2 w-2 rounded-full bg-primary ring-4 ring-primary/10" />
@@ -302,6 +304,10 @@ function Dashboard() {
                       <div><p className="text-[0.62rem] uppercase tracking-wider text-muted-foreground md:hidden">Departure</p><p data-testid={`text-departure-${schedule.id}`} className="mt-1 font-mono text-sm font-medium md:mt-0">{formatDate(schedule.departureDate)}</p></div>
                       <div><p className="text-[0.62rem] uppercase tracking-wider text-muted-foreground md:hidden">Arrival</p><p data-testid={`text-arrival-${schedule.id}`} className="mt-1 font-mono text-sm font-medium md:mt-0">{formatDate(schedule.arrivalDate)}</p></div>
                       <div className="flex items-center justify-between md:block"><div><p className="text-[0.62rem] uppercase tracking-wider text-muted-foreground md:hidden">Transit</p><p data-testid={`text-transit-${schedule.id}`} className="mt-1 font-mono text-sm font-medium md:mt-0">{schedule.transitTime || '—'}</p></div><Database className="h-4 w-4 text-muted-foreground/35 md:hidden" /></div>
+                      <a data-testid={`button-book-${schedule.id}`} href={MSC_BOOKING_URL} target="_blank" rel="noreferrer" aria-label={`Book ${schedule.destination} sailing with MSC`} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-primary/[0.06] px-3 py-2 text-xs font-bold text-primary transition-colors hover:border-primary/50 hover:bg-primary/12 md:justify-self-end">
+                        Book with MSC
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
                     </article>
                   ))}
                 </div>
