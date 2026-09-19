@@ -299,35 +299,57 @@ function Dashboard() {
               <form data-testid="form-schedule-filters" onSubmit={submitFilters} className="mb-5 grid gap-3 rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 md:grid-cols-[1.3fr_1fr_1fr_auto] md:items-end">
                 <label className="block">
                   <span className="eyebrow text-muted-foreground">Ports or countries</span>
-                  <div className="mt-2 flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border border-input bg-card px-2 py-1.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
-                    <Search className="ml-1 h-4 w-4 shrink-0 text-muted-foreground" />
-                    {(draft.destinations ?? []).map((destination) => (
-                      <span key={destination} className="inline-flex items-center gap-1 rounded-md bg-primary/10 py-1 pl-2 pr-1 text-xs font-semibold text-primary">
-                        {destination}
-                        <button data-testid={`button-remove-destination-${destination}`} type="button" onClick={() => removeDestination(destination)} aria-label={`Remove ${destination}`} className="rounded p-0.5 transition-colors hover:bg-primary/15">
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                    <input
-                      data-testid="input-destination"
-                      value={destinationInput}
-                      onChange={(event) => setDestinationInput(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter') {
-                          event.preventDefault();
-                          addDestination();
-                        }
-                      }}
-                      placeholder={(draft.destinations ?? []).length ? 'Add another' : 'Search a port or country'}
-                      aria-describedby="destination-filter-help"
-                      className="h-7 min-w-[10rem] flex-1 border-0 bg-transparent px-1 text-sm outline-none placeholder:text-muted-foreground/70"
-                    />
-                    <button data-testid="button-add-destination" type="button" onClick={addDestination} disabled={!destinationInput.trim()} className="rounded-md bg-sidebar px-2.5 py-1.5 text-xs font-bold text-sidebar-foreground transition-colors hover:bg-sidebar/90 disabled:cursor-not-allowed disabled:opacity-40">
-                      Add
-                    </button>
+                  <div className="relative mt-2">
+                    <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border border-input bg-card px-2 py-1.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
+                      <Search className="ml-1 h-4 w-4 shrink-0 text-muted-foreground" />
+                      {(draft.destinations ?? []).map((destination) => (
+                        <span key={destination} className="inline-flex items-center gap-1 rounded-md bg-primary/10 py-1 pl-2 pr-1 text-xs font-semibold text-primary">
+                          {destination}
+                          <button data-testid={`button-remove-destination-${destination}`} type="button" onClick={() => removeDestination(destination)} aria-label={`Remove ${destination}`} className="rounded p-0.5 transition-colors hover:bg-primary/15">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                      <input
+                        data-testid="input-destination"
+                        value={destinationInput}
+                        onChange={(event) => setDestinationInput(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            addDestination();
+                          }
+                        }}
+                        placeholder={(draft.destinations ?? []).length ? 'Add another' : 'Search a port or country'}
+                        aria-describedby="destination-filter-help"
+                        aria-controls="destination-suggestions"
+                        aria-expanded={showDestinationSuggestions}
+                        className="h-7 min-w-[10rem] flex-1 border-0 bg-transparent px-1 text-sm outline-none placeholder:text-muted-foreground/70"
+                      />
+                      <button data-testid="button-add-destination" type="button" onClick={() => addDestination()} disabled={!destinationInput.trim()} className="rounded-md bg-sidebar px-2.5 py-1.5 text-xs font-bold text-sidebar-foreground transition-colors hover:bg-sidebar/90 disabled:cursor-not-allowed disabled:opacity-40">
+                        Add
+                      </button>
+                    </div>
+                    {showDestinationSuggestions && (
+                      <div id="destination-suggestions" data-testid="destination-suggestions" role="listbox" className="absolute left-0 right-0 top-full z-30 mt-1 max-h-56 overflow-auto rounded-lg border border-border bg-card p-1 shadow-lg">
+                        {destinationSuggestions.map((option) => (
+                          <button
+                            key={`${option.kind}-${option.value}`}
+                            data-testid={`option-destination-${option.value}`}
+                            type="button"
+                            role="option"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => addDestination(option.value)}
+                            className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-secondary"
+                          >
+                            <span className="font-medium">{option.value}</span>
+                            <span className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">{option.kind}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <p id="destination-filter-help" className="mt-1 text-[0.68rem] text-muted-foreground">Type a port or country, then click Add. Select × to remove it.</p>
+                  <p id="destination-filter-help" className="mt-1 text-[0.68rem] text-muted-foreground">Type to see matching ports and countries. Click a suggestion or Add; use × to remove.</p>
                 </label>
                 <label className="block">
                   <span className="eyebrow text-muted-foreground">Departing from</span>
