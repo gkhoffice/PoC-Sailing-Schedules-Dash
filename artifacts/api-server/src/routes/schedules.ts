@@ -12,7 +12,17 @@ const router: IRouter = Router();
 let refreshInFlight: Promise<Awaited<ReturnType<typeof refreshMscSchedules>>> | null = null;
 
 const buildResponse = async (query: Record<string, unknown>) => {
-  const parsed = GetSchedulesQueryParams.safeParse(query);
+  const parsed = GetSchedulesQueryParams.safeParse({
+    ...query,
+    departureFrom:
+      typeof query.departureFrom === "string"
+        ? new Date(`${query.departureFrom}T00:00:00.000Z`)
+        : query.departureFrom,
+    departureTo:
+      typeof query.departureTo === "string"
+        ? new Date(`${query.departureTo}T00:00:00.000Z`)
+        : query.departureTo,
+  });
   if (!parsed.success) {
     throw new Error(parsed.error.message);
   }

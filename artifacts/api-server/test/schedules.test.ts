@@ -129,3 +129,35 @@ test("searching by an unrelated country excludes all fixture sailings", async ()
   assert.equal(body.count, 0);
   assert.deepEqual(body.schedules, []);
 });
+
+test("departureFrom includes the boundary date and excludes earlier sailings", async () => {
+  const response = await fetch(`${baseUrl}/api/schedules?departureFrom=2026-10-03`);
+  assert.equal(response.status, 200);
+
+  const body = (await response.json()) as {
+    count: number;
+    schedules: Array<{ id: string; departureDate: string | null }>;
+  };
+  assert.equal(body.count, 2);
+  assert.deepEqual(
+    body.schedules.map((schedule) => schedule.id),
+    ["us-2", "uk-1"],
+  );
+  assert.ok(body.schedules.every((schedule) => schedule.departureDate >= "2026-10-03"));
+});
+
+test("departureTo includes the boundary date and excludes later sailings", async () => {
+  const response = await fetch(`${baseUrl}/api/schedules?departureTo=2026-10-03`);
+  assert.equal(response.status, 200);
+
+  const body = (await response.json()) as {
+    count: number;
+    schedules: Array<{ id: string; departureDate: string | null }>;
+  };
+  assert.equal(body.count, 2);
+  assert.deepEqual(
+    body.schedules.map((schedule) => schedule.id),
+    ["us-1", "us-2"],
+  );
+  assert.ok(body.schedules.every((schedule) => schedule.departureDate?.slice(0, 10) <= "2026-10-03"));
+});
