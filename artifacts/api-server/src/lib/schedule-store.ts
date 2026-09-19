@@ -4,7 +4,9 @@ import path from "node:path";
 export type NormalizedSchedule = {
   id: string;
   origin: string;
+  originCountry: string | null;
   destination: string;
+  destinationCountry: string | null;
   vessel: string;
   voyage: string;
   departureDate: string | null;
@@ -32,7 +34,13 @@ export async function readScheduleCache(): Promise<ScheduleCache> {
     const content = await readFile(cachePath, "utf8");
     const parsed = JSON.parse(content) as Partial<ScheduleCache>;
     return {
-      schedules: Array.isArray(parsed.schedules) ? parsed.schedules : [],
+      schedules: Array.isArray(parsed.schedules)
+        ? parsed.schedules.map((schedule) => ({
+            ...schedule,
+            originCountry: typeof schedule.originCountry === "string" ? schedule.originCountry : null,
+            destinationCountry: typeof schedule.destinationCountry === "string" ? schedule.destinationCountry : null,
+          }))
+        : [],
       lastUpdated: typeof parsed.lastUpdated === "string" ? parsed.lastUpdated : null,
       source: typeof parsed.source === "string" ? parsed.source : emptyCache().source,
     };

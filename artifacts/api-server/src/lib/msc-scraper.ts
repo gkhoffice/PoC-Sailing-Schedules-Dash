@@ -84,6 +84,20 @@ function normalizeRecord(input: Record<string, unknown>, index: number): Normali
       "loadPort",
       "departurePort",
     ]) ?? PORT_LOUIS;
+  const originCountry = fieldValue(merged, [
+    "originCountry",
+    "originCountryName",
+    "portOfLoadingCountry",
+    "fromCountry",
+    "polCountry",
+  ]);
+  const destinationCountry = fieldValue(merged, [
+    "destinationCountry",
+    "destinationCountryName",
+    "portOfDischargeCountry",
+    "toCountry",
+    "podCountry",
+  ]);
   const vessel = fieldValue(merged, ["vessel", "vesselName", "shipName", "ship"]) ?? "";
   const voyage = fieldValue(merged, ["voyage", "voyageNumber", "voyageNo", "vesselVoyage", "sailing"]) ?? "";
 
@@ -120,7 +134,9 @@ function normalizeRecord(input: Record<string, unknown>, index: number): Normali
   return {
     id: createHash("sha1").update(idSource).digest("hex").slice(0, 12),
     origin,
+    originCountry,
     destination: destination || "Any destination",
+    destinationCountry,
     vessel: vessel || "—",
     voyage: voyage || "—",
     departureDate,
@@ -168,7 +184,14 @@ function parseMscRoutes(payloads: unknown[]): NormalizedSchedule[] {
 
   for (const payload of payloads) {
     if (!payload || typeof payload !== "object" || Array.isArray(payload)) continue;
-    const data = (payload as Record<string, unknown>).Data;
+    const envelope = payload as Record<string, unknown>;
+    const routePayload =
+      envelope.payload && typeof envelope.payload === "object" && !Array.isArray(envelope.payload)
+        ? (envelope.payload as Record<string, unknown>)
+        : envelope;
+    const originCountry = stringValue(envelope.originCountry);
+    const destinationCountry = stringValue(envelope.destinationCountry);
+    const data = routePayload.Data;
     if (!Array.isArray(data)) continue;
 
     for (const routeGroup of data) {
@@ -192,7 +215,9 @@ function parseMscRoutes(payloads: unknown[]): NormalizedSchedule[] {
 
         records.push({
           origin: group.PortOfLoad ?? firstLeg.DeparturePortName,
+          originCountry,
           destination: group.PortOfDischarge ?? firstLeg.ArrivalPortName,
+          destinationCountry,
           vessel,
           voyage: routeRecord.DepartureVoyageNo ?? firstLeg.DepartureVoyageNo,
           departureDate: routeRecord.EstimatedDepartureDate ?? group.EstimatedDepartureTime,
@@ -260,7 +285,11 @@ async function fetchAllDestinationRoutes(page: Page): Promise<unknown[]> {
               | { IsSuccess?: boolean; Data?: unknown[] }
               | null;
             if (payload?.IsSuccess && Array.isArray(payload.Data) && payload.Data.length > 0) {
-              successful.push(payload);
+              successful.push({
+                payload,
+                originCountry: origin.CountryName ?? null,
+                destinationCountry: destination.LocationName ? destination.CountryName ?? null : null,
+              });
             }
           } catch {
             // One unavailable destination should not discard routes from other ports.

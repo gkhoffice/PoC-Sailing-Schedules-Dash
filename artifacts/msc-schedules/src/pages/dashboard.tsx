@@ -285,9 +285,15 @@ function Dashboard() {
                       <div className="route-line pl-5">
                         <div className="flex items-center gap-2">
                           <span className="h-2 w-2 rounded-full bg-primary ring-4 ring-primary/10" />
-                          <p data-testid={`text-destination-${schedule.id}`} className="font-bold tracking-tight">{schedule.destination}</p>
+                        <p data-testid={`text-destination-${schedule.id}`} className="font-bold tracking-tight">
+                          {schedule.destination}
+                          {schedule.destinationCountry && <span className="ml-1 font-normal text-muted-foreground">· {schedule.destinationCountry}</span>}
+                        </p>
                         </div>
-                        <p className="mt-1 text-xs text-muted-foreground">{schedule.service || 'MSC service'} <span className="mx-1 text-border">/</span> from {schedule.origin}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {schedule.service || 'MSC service'} <span className="mx-1 text-border">/</span> from {schedule.origin}
+                        {schedule.originCountry && <span>, {schedule.originCountry}</span>}
+                      </p>
                       </div>
                       <div className="grid grid-cols-2 gap-3 md:block">
                         <div><p className="text-[0.62rem] uppercase tracking-wider text-muted-foreground md:hidden">Vessel / voyage</p><p data-testid={`text-vessel-${schedule.id}`} className="mt-1 font-semibold md:mt-0">{schedule.vessel}</p></div>
