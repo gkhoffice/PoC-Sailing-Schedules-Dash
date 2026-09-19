@@ -19,7 +19,11 @@ const buildResponse = async (query: Record<string, unknown>) => {
   const cache = await readScheduleCache();
   const destination = parsed.data.destination?.trim().toLowerCase();
   const schedules = cache.schedules.filter((schedule) => {
-    if (destination && !schedule.destination.toLowerCase().includes(destination)) return false;
+    const matchesDestination =
+      !destination ||
+      schedule.destination.toLowerCase().includes(destination) ||
+      schedule.destinationCountry?.toLowerCase().includes(destination);
+    if (!matchesDestination) return false;
     if (parsed.data.departureFrom) {
       if (!schedule.departureDate || schedule.departureDate < parsed.data.departureFrom.toISOString().slice(0, 10)) return false;
     }

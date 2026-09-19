@@ -240,7 +240,7 @@ function Dashboard() {
             {showFilters && (
               <form data-testid="form-schedule-filters" onSubmit={submitFilters} className="mb-5 grid gap-3 rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 md:grid-cols-[1.3fr_1fr_1fr_auto] md:items-end">
                 <label className="block">
-                  <span className="eyebrow text-muted-foreground">Destination</span>
+                  <span className="eyebrow text-muted-foreground">Destination or country</span>
                   <div className="relative mt-2">
                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <input data-testid="input-destination" value={draft.destination ?? ''} onChange={(event) => setDraft({ ...draft, destination: event.target.value })} placeholder="Search port or country" className="h-10 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:ring-2 focus:ring-primary/15" />

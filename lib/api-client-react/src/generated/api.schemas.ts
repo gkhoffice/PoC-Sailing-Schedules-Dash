@@ -54,7 +54,7 @@ export interface ErrorResponse {
 }
 
 /**
- * Case-insensitive destination search text
+ * Case-insensitive search text matched against destination port and country
  */
 export type DestinationQueryParameter = string;
 
@@ -70,7 +70,7 @@ export type DepartureToQueryParameter = string;
 
 export type GetSchedulesParams = {
 /**
- * Case-insensitive destination search text
+ * Case-insensitive search text matched against destination port and country
  */
 destination?: DestinationQueryParameter;
 /**

@@ -7,6 +7,6 @@
  */
 
 /**
- * Case-insensitive destination search text
+ * Case-insensitive search text matched against destination port and country
  */
 export type DestinationQueryParameter = string;
