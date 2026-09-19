@@ -343,7 +343,7 @@ function Dashboard() {
             )}
 
             {!isManifestPage && (
-              <form data-testid="form-schedule-filters" onSubmit={submitFilters} className="mb-5 grid gap-3 rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 md:grid-cols-[1.3fr_1fr_1fr_auto] md:items-end">
+              <form data-testid="form-schedule-filters" onSubmit={submitFilters} className="mb-5 grid gap-3 rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 md:grid-cols-[1.3fr_1fr_1fr_auto] md:items-start">
                 <label className="block">
                   <span className="eyebrow text-muted-foreground">Ports or countries</span>
                   <div className="relative mt-2">
@@ -406,7 +406,7 @@ function Dashboard() {
                   <span className="eyebrow text-muted-foreground">Departing to</span>
                   <input data-testid="input-departure-to" type="date" value={draft.departureTo ?? ''} onChange={(event) => setDraft({ ...draft, departureTo: event.target.value })} className="mt-2 h-10 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15" />
                 </label>
-                <button data-testid="button-apply-filters" type="submit" className="h-10 rounded-lg bg-sidebar px-4 text-sm font-bold text-sidebar-foreground transition-colors hover:bg-sidebar/90">Search</button>
+                <button data-testid="button-apply-filters" type="submit" className="h-10 rounded-lg bg-sidebar px-4 text-sm font-bold text-sidebar-foreground transition-colors hover:bg-sidebar/90 md:mt-8">Search</button>
               </form>
             )}
 
