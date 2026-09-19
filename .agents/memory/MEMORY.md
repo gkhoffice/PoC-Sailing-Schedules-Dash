@@ -1,1 +1,2 @@
 - [Playwright Replit runtime](playwright-replit-runtime.md) — prefer the provided Chromium executable when bundled Playwright binaries lack native libraries.
+- [MSC schedule API](msc-schedule-api.md) — MSC requires one SearchSailingRoutes request per destination port; the public form cannot request all destinations with a blank To field.

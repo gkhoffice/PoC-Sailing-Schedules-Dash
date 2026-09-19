@@ -4,6 +4,9 @@ import type { NormalizedSchedule } from "./schedule-store";
 import { logger } from "./logger";
 
 const MSC_SCHEDULE_URL = "https://www.msc.com/en/search-a-schedule";
+const MSC_PORTS_URL = "/api/feature/tools/GetAllAvailableCountriesAndPorts";
+const MSC_ROUTES_URL = "/api/feature/tools/SearchSailingRoutes";
+const MSC_DATA_SOURCE_ID = "{E9CCBD25-6FBA-4C5C-85F6-FC4F9E5A931F}";
 const PORT_LOUIS = "Port Louis";
 
 type JsonValue = Record<string, unknown> | unknown[];
@@ -160,6 +163,118 @@ function parseSchedules(payload: unknown): NormalizedSchedule[] {
   return [...unique.values()];
 }
 
+function parseMscRoutes(payloads: unknown[]): NormalizedSchedule[] {
+  const records: Record<string, unknown>[] = [];
+
+  for (const payload of payloads) {
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) continue;
+    const data = (payload as Record<string, unknown>).Data;
+    if (!Array.isArray(data)) continue;
+
+    for (const routeGroup of data) {
+      if (!routeGroup || typeof routeGroup !== "object" || Array.isArray(routeGroup)) continue;
+      const group = routeGroup as Record<string, unknown>;
+      const routes = Array.isArray(group.Routes) ? group.Routes : [group];
+
+      for (const route of routes) {
+        if (!route || typeof route !== "object" || Array.isArray(route)) continue;
+        const routeRecord = route as Record<string, unknown>;
+        const legs = Array.isArray(routeRecord.RouteScheduleLegDetails)
+          ? routeRecord.RouteScheduleLegDetails
+          : [];
+        const firstLeg = legs[0] && typeof legs[0] === "object" ? (legs[0] as Record<string, unknown>) : {};
+        const vessel =
+          typeof routeRecord.VesselName === "string"
+            ? routeRecord.VesselName
+            : firstLeg.Vessel && typeof firstLeg.Vessel === "object"
+              ? (firstLeg.Vessel as Record<string, unknown>).VesselName
+              : null;
+
+        records.push({
+          origin: group.PortOfLoad ?? firstLeg.DeparturePortName,
+          destination: group.PortOfDischarge ?? firstLeg.ArrivalPortName,
+          vessel,
+          voyage: routeRecord.DepartureVoyageNo ?? firstLeg.DepartureVoyageNo,
+          departureDate: routeRecord.EstimatedDepartureDate ?? group.EstimatedDepartureTime,
+          arrivalDate: routeRecord.EstimatedArrivalDate ?? firstLeg.EstimatedArrivalTime,
+          transitTime: routeRecord.TotalTransitTime ?? group.TransitTime,
+          service:
+            routeRecord.MaritimeServiceName ??
+            group.LoadingService ??
+            (group.Key && typeof group.Key === "object"
+              ? (group.Key as Record<string, unknown>).MaritimeServiceName
+              : null),
+        });
+      }
+    }
+  }
+
+  const unique = new Map<string, NormalizedSchedule>();
+  records.forEach((record, index) => {
+    const normalized = normalizeRecord(record, index);
+    if (normalized) unique.set(normalized.id, normalized);
+  });
+  return [...unique.values()];
+}
+
+async function fetchAllDestinationRoutes(page: Page): Promise<unknown[]> {
+  const fromDate = new Date().toISOString().slice(0, 10);
+  return page.evaluate(
+    async ({ fromDate, dataSourceId }: { fromDate: string; dataSourceId: string }) => {
+      const portsResponse = await fetch("/api/feature/tools/GetAllAvailableCountriesAndPorts");
+      if (!portsResponse.ok) throw new Error(`MSC ports request failed with status ${portsResponse.status}.`);
+      const portsPayload = (await portsResponse.json()) as {
+        Ports?: Array<{ PortId?: number; LocationName?: string; LocationCode?: string }>;
+      };
+      const ports = Array.isArray(portsPayload.Ports) ? portsPayload.Ports : [];
+      const origin = ports.find(
+        (port) =>
+          port.LocationCode?.toUpperCase() === "MUPLU" ||
+          port.LocationName?.toUpperCase() === "PORT LOUIS",
+      );
+      if (!origin?.PortId) throw new Error("MSC Port Louis was not found in the available ports list.");
+
+      const destinations = ports.filter((port) => port.PortId && port.PortId !== origin.PortId);
+      const pending = [...destinations];
+      const successful: unknown[] = [];
+      const worker = async () => {
+        while (pending.length > 0) {
+          const destination = pending.pop();
+          if (!destination?.PortId) continue;
+          try {
+            const response = await fetch("/api/feature/tools/SearchSailingRoutes", {
+              method: "POST",
+              headers: {
+                "content-type": "application/json",
+                "x-requested-with": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                FromDate: fromDate,
+                fromPortId: origin.PortId,
+                toPortId: destination.PortId,
+                language: "en",
+                dataSourceId: dataSourceId,
+              }),
+            });
+            const payload = (await response.json().catch(() => null)) as
+              | { IsSuccess?: boolean; Data?: unknown[] }
+              | null;
+            if (payload?.IsSuccess && Array.isArray(payload.Data) && payload.Data.length > 0) {
+              successful.push(payload);
+            }
+          } catch {
+            // One unavailable destination should not discard routes from other ports.
+          }
+        }
+      };
+
+      await Promise.all(Array.from({ length: 16 }, () => worker()));
+      return successful;
+    },
+    { fromDate, dataSourceId: MSC_DATA_SOURCE_ID },
+  );
+}
+
 async function acceptCookies(page: Page): Promise<void> {
   const candidates = [
     page.locator("#onetrust-accept-btn-handler"),
@@ -308,7 +423,13 @@ export async function scrapeMscSchedules(): Promise<NormalizedSchedule[]> {
       if (schedules.length > 0) return schedules;
     }
 
-    throw new Error(`MSC returned no recognizable schedule JSON responses (${payloads.length} candidate responses captured).`);
+    const allDestinationPayloads = await fetchAllDestinationRoutes(page);
+    const allDestinationSchedules = parseMscRoutes(allDestinationPayloads);
+    if (allDestinationSchedules.length > 0) return allDestinationSchedules;
+
+    throw new Error(
+      `MSC returned no recognizable schedule data (${payloads.length} page responses and ${allDestinationPayloads.length} route responses captured).`,
+    );
   } finally {
     await browser.close();
   }
