@@ -22,7 +22,7 @@ export const HealthCheckResponse = zod.object({
  * @summary Get cached MSC sailing schedules
  */
 export const GetSchedulesQueryParams = zod.object({
-  "destination": zod.coerce.string().optional().describe('Case-insensitive search text matched against destination port and country'),
+  "destination": zod.coerce.string().optional().describe('Case-insensitive search text matched against destination port and country; separate multiple values with commas'),
   "departureFrom": zod.date().optional().describe('Earliest departure date, inclusive'),
   "departureTo": zod.date().optional().describe('Latest departure date, inclusive')
 })

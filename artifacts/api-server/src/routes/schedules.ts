@@ -27,12 +27,18 @@ const buildResponse = async (query: Record<string, unknown>) => {
     throw new Error(parsed.error.message);
   }
   const cache = await readScheduleCache();
-  const destination = parsed.data.destination?.trim().toLowerCase();
+  const destinationTerms = (parsed.data.destination ?? "")
+    .split(",")
+    .map((term) => term.trim().toLowerCase())
+    .filter(Boolean);
   const schedules = cache.schedules.filter((schedule) => {
     const matchesDestination =
-      !destination ||
-      schedule.destination.toLowerCase().includes(destination) ||
-      schedule.destinationCountry?.toLowerCase().includes(destination);
+      destinationTerms.length === 0 ||
+      destinationTerms.some(
+        (term) =>
+          schedule.destination.toLowerCase().includes(term) ||
+          schedule.destinationCountry?.toLowerCase().includes(term),
+      );
     if (!matchesDestination) return false;
     if (parsed.data.departureFrom) {
       if (!schedule.departureDate || schedule.departureDate < parsed.data.departureFrom.toISOString().slice(0, 10)) return false;

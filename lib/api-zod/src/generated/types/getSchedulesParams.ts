@@ -11,7 +11,7 @@ import type { DestinationQueryParameter } from './destinationQueryParameter';
 
 export type GetSchedulesParams = {
 /**
- * Case-insensitive search text matched against destination port and country
+ * Case-insensitive search text matched against destination port and country; separate multiple values with commas
  */
 destination?: DestinationQueryParameter;
 /**

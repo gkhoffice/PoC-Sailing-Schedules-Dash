@@ -118,6 +118,21 @@ test("searching by destination country ignores surrounding spaces", async () => 
   assert.ok(body.schedules.every((schedule) => schedule.destinationCountry === "United States"));
 });
 
+test("searching by multiple ports or countries returns matches for any term", async () => {
+  const response = await fetch(`${baseUrl}/api/schedules?destination=United%20States%2CFelixstowe`);
+  assert.equal(response.status, 200);
+
+  const body = (await response.json()) as {
+    count: number;
+    schedules: Array<{ id: string }>;
+  };
+  assert.equal(body.count, 3);
+  assert.deepEqual(
+    body.schedules.map((schedule) => schedule.id),
+    ["us-1", "us-2", "uk-1"],
+  );
+});
+
 test("searching by an unrelated country excludes all fixture sailings", async () => {
   const response = await fetch(`${baseUrl}/api/schedules?destination=Canada`);
   assert.equal(response.status, 200);

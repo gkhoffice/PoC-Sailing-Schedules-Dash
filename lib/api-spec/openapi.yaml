@@ -88,7 +88,7 @@ components:
       required: false
       schema:
         type: string
-      description: Case-insensitive search text matched against destination port and country
+      description: Case-insensitive search text matched against destination port and country; separate multiple values with commas
     DepartureFromQuery:
       name: departureFrom
       in: query
