@@ -12,7 +12,11 @@ export interface HealthStatus {
 export interface Schedule {
   id: string;
   origin: string;
+  /** @nullable */
+  originCountry: string | null;
   destination: string;
+  /** @nullable */
+  destinationCountry: string | null;
   vessel: string;
   voyage: string;
   /** @nullable */

@@ -249,7 +249,7 @@ async function fetchAllDestinationRoutes(page: Page): Promise<unknown[]> {
       const portsResponse = await fetch("/api/feature/tools/GetAllAvailableCountriesAndPorts");
       if (!portsResponse.ok) throw new Error(`MSC ports request failed with status ${portsResponse.status}.`);
       const portsPayload = (await portsResponse.json()) as {
-        Ports?: Array<{ PortId?: number; LocationName?: string; LocationCode?: string }>;
+        Ports?: Array<{ PortId?: number; LocationName?: string; LocationCode?: string; CountryName?: string }>;
       };
       const ports = Array.isArray(portsPayload.Ports) ? portsPayload.Ports : [];
       const origin = ports.find(

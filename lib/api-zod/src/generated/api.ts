@@ -31,7 +31,9 @@ export const GetSchedulesResponse = zod.object({
   "schedules": zod.array(zod.object({
   "id": zod.string(),
   "origin": zod.string(),
+  "originCountry": zod.string().nullable(),
   "destination": zod.string(),
+  "destinationCountry": zod.string().nullable(),
   "vessel": zod.string(),
   "voyage": zod.string(),
   "departureDate": zod.coerce.date().nullable(),
@@ -67,7 +69,9 @@ export const RefreshSchedulesResponse = zod.object({
   "schedules": zod.array(zod.object({
   "id": zod.string(),
   "origin": zod.string(),
+  "originCountry": zod.string().nullable(),
   "destination": zod.string(),
+  "destinationCountry": zod.string().nullable(),
   "vessel": zod.string(),
   "voyage": zod.string(),
   "departureDate": zod.coerce.date().nullable(),
