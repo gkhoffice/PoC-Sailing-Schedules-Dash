@@ -59,6 +59,21 @@ const fixture = {
       transitTime: null,
       service: "Fixture Service",
     },
+    {
+      id: "maersk-1",
+      carrier: "Maersk",
+      bookingUrl: "https://www.maersk.com/schedules/pointToPoint",
+      origin: "Port Louis",
+      originCountry: "Mauritius",
+      destination: "Singapore",
+      destinationCountry: "Singapore",
+      vessel: "Maersk Fixture",
+      voyage: "005N",
+      departureDate: "2026-10-07",
+      arrivalDate: "2026-10-17",
+      transitTime: "10 days",
+      service: "Maersk Service",
+    },
   ],
   lastUpdated: "2026-09-19T00:00:00.000Z",
   source: "Local route test fixture",
@@ -154,6 +169,35 @@ test("searching by an unrelated country excludes all fixture sailings", async ()
   };
   assert.equal(body.count, 0);
   assert.deepEqual(body.schedules, []);
+});
+
+test("searching by one or more carriers is case-insensitive", async () => {
+  const response = await fetch(`${baseUrl}/api/schedules?carrier=msc%2Cmaersk`);
+  assert.equal(response.status, 200);
+
+  const body = (await response.json()) as {
+    count: number;
+    schedules: Array<{ id: string; carrier: string }>;
+  };
+  assert.equal(body.count, 5);
+  assert.deepEqual(
+    body.schedules.map((schedule) => schedule.id),
+    ["us-1", "us-2", "uk-1", "undated-1", "maersk-1"],
+  );
+  assert.deepEqual(new Set(body.schedules.map((schedule) => schedule.carrier)), new Set(["MSC", "Maersk"]));
+});
+
+test("searching by a single carrier excludes other carriers", async () => {
+  const response = await fetch(`${baseUrl}/api/schedules?carrier=Maersk`);
+  assert.equal(response.status, 200);
+
+  const body = (await response.json()) as {
+    count: number;
+    schedules: Array<{ id: string; carrier: string }>;
+  };
+  assert.equal(body.count, 1);
+  assert.equal(body.schedules[0]?.id, "maersk-1");
+  assert.equal(body.schedules[0]?.carrier, "Maersk");
 });
 
 test("departureFrom includes the boundary date and excludes earlier sailings", async () => {

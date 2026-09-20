@@ -23,6 +23,7 @@ export const HealthCheckResponse = zod.object({
  */
 export const GetSchedulesQueryParams = zod.object({
   "destination": zod.coerce.string().optional().describe('Case-insensitive search text matched against destination port and country; separate multiple values with commas'),
+  "carrier": zod.coerce.string().optional().describe('Case-insensitive carrier filter; select one or more carriers by separating values with commas'),
   "departureFrom": zod.date().optional().describe('Earliest departure date, inclusive. Must use YYYY-MM-DD and be on or before departureTo.'),
   "departureTo": zod.date().optional().describe('Latest departure date, inclusive. Must use YYYY-MM-DD and be on or after departureFrom.')
 })

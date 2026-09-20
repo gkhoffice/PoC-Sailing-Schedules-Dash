@@ -28,6 +28,7 @@ import {
 
 type Filters = {
   destinations?: string[];
+  carriers?: string[];
   departureFrom?: string;
   departureTo?: string;
 };
@@ -43,10 +44,15 @@ const filtersFromSearch = (search: string): Filters => {
     .split(',')
     .map((destination) => destination.trim())
     .filter(Boolean);
+  const carriers = (query.get('carrier') ?? '')
+    .split(',')
+    .map((carrier) => carrier.trim())
+    .filter(Boolean);
   const departureFrom = query.get('departureFrom') || undefined;
   const departureTo = query.get('departureTo') || undefined;
   return {
     ...(destinations.length ? { destinations } : {}),
+    ...(carriers.length ? { carriers } : {}),
     ...(departureFrom ? { departureFrom } : {}),
     ...(departureTo ? { departureTo } : {}),
   };
@@ -55,6 +61,7 @@ const filtersFromSearch = (search: string): Filters => {
 const manifestUrl = (filters: Filters) => {
   const query = new URLSearchParams();
   if (filters.destinations?.length) query.set('destination', filters.destinations.join(','));
+  if (filters.carriers?.length) query.set('carrier', filters.carriers.join(','));
   if (filters.departureFrom) query.set('departureFrom', filters.departureFrom);
   if (filters.departureTo) query.set('departureTo', filters.departureTo);
   const encoded = query.toString();
@@ -145,6 +152,7 @@ function Dashboard() {
 
   const params = useMemo(() => ({
     ...(filters.destinations?.length ? { destination: filters.destinations.join(',') } : {}),
+    ...(filters.carriers?.length ? { carrier: filters.carriers.join(',') } : {}),
     ...(filters.departureFrom ? { departureFrom: filters.departureFrom } : {}),
     ...(filters.departureTo ? { departureTo: filters.departureTo } : {}),
   }), [filters]);
@@ -169,6 +177,11 @@ function Dashboard() {
     }
     return [...options.values()].sort((left, right) => left.value.localeCompare(right.value));
   }, [filterOptionsQuery.data?.schedules]);
+  const carrierOptions = useMemo(
+    () => [...new Set((filterOptionsQuery.data?.schedules ?? []).map((schedule) => schedule.carrier).filter(Boolean))]
+      .sort((left, right) => left.localeCompare(right)),
+    [filterOptionsQuery.data?.schedules],
+  );
   const destinationSuggestions = useMemo(() => {
     const query = destinationInput.trim().toLowerCase();
     if (!query) return [];
@@ -186,6 +199,7 @@ function Dashboard() {
     .sort()[0] ?? null;
   const activeFilterCount = [
     Boolean(filters.destinations?.length),
+    Boolean(filters.carriers?.length),
     Boolean(filters.departureFrom),
     Boolean(filters.departureTo),
   ].filter(Boolean).length;
@@ -224,6 +238,14 @@ function Dashboard() {
       ...draft,
       destinations: (draft.destinations ?? []).filter((destination) => destination !== value),
     });
+  };
+
+  const toggleCarrier = (carrier: string, checked: boolean) => {
+    const selected = new Set(draft.carriers ?? []);
+    if (checked) selected.add(carrier);
+    else selected.delete(carrier);
+    const carriers = [...selected];
+    setDraft({ ...draft, ...(carriers.length ? { carriers } : { carriers: undefined }) });
   };
 
   const refresh = () => {
@@ -342,7 +364,35 @@ function Dashboard() {
             )}
 
             {!isManifestPage && (
-              <form data-testid="form-schedule-filters" onSubmit={submitFilters} className="mb-5 grid gap-3 rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 md:grid-cols-[1.3fr_1fr_1fr_auto] md:items-start">
+              <form data-testid="form-schedule-filters" onSubmit={submitFilters} className="mb-5 grid gap-3 rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 md:grid-cols-[1.3fr_1fr_1fr_1fr_auto] md:items-start">
+                <fieldset className="block">
+                  <legend className="eyebrow text-muted-foreground">Carriers</legend>
+                  <div className="mt-2 flex min-h-10 flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-input bg-card px-3 py-2">
+                    <label className="inline-flex items-center gap-2 text-sm font-semibold">
+                      <input
+                        data-testid="checkbox-carrier-all"
+                        type="checkbox"
+                        checked={!draft.carriers?.length}
+                        onChange={() => setDraft({ ...draft, carriers: undefined })}
+                        className="h-4 w-4 accent-primary"
+                      />
+                      All carriers
+                    </label>
+                    {carrierOptions.map((carrier) => (
+                      <label key={carrier} className="inline-flex items-center gap-2 text-sm">
+                        <input
+                          data-testid={`checkbox-carrier-${carrier}`}
+                          type="checkbox"
+                          checked={draft.carriers?.includes(carrier) ?? false}
+                          onChange={(event) => toggleCarrier(carrier, event.target.checked)}
+                          className="h-4 w-4 accent-primary"
+                        />
+                        {carrier}
+                      </label>
+                    ))}
+                  </div>
+                  <p className="mt-1 text-[0.68rem] text-muted-foreground">Choose one or more carriers, or leave all selected.</p>
+                </fieldset>
                 <label className="block">
                   <span className="eyebrow text-muted-foreground">Ports or countries</span>
                   <div className="relative mt-2">

@@ -34,6 +34,7 @@ paths:
       description: Returns the latest successfully cached MSC and Maersk schedules originating from Port Louis, Mauritius.
       parameters:
         - $ref: "#/components/parameters/DestinationQuery"
+        - $ref: "#/components/parameters/CarrierQuery"
         - $ref: "#/components/parameters/DepartureFromQuery"
         - $ref: "#/components/parameters/DepartureToQuery"
       responses:
@@ -95,6 +96,13 @@ components:
       schema:
         type: string
       description: Case-insensitive search text matched against destination port and country; separate multiple values with commas
+    CarrierQuery:
+      name: carrier
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Case-insensitive carrier filter; select one or more carriers by separating values with commas
     DepartureFromQuery:
       name: departureFrom
       in: query

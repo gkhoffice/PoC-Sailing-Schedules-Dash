@@ -61,6 +61,11 @@ export interface ErrorResponse {
 export type DestinationQueryParameter = string;
 
 /**
+ * Case-insensitive carrier filter; select one or more carriers by separating values with commas
+ */
+export type CarrierQueryParameter = string;
+
+/**
  * Earliest departure date, inclusive. Must use YYYY-MM-DD and be on or before departureTo.
  */
 export type DepartureFromQueryParameter = string;
@@ -75,6 +80,10 @@ export type GetSchedulesParams = {
  * Case-insensitive search text matched against destination port and country; separate multiple values with commas
  */
 destination?: DestinationQueryParameter;
+/**
+ * Case-insensitive carrier filter; select one or more carriers by separating values with commas
+ */
+carrier?: CarrierQueryParameter;
 /**
  * Earliest departure date, inclusive. Must use YYYY-MM-DD and be on or before departureTo.
  */

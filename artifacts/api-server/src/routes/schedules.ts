@@ -52,7 +52,14 @@ const buildResponse = async (query: Record<string, unknown>) => {
     .split(",")
     .map((term) => term.trim().toLowerCase())
     .filter(Boolean);
+  const carrierTerms = (parsed.data.carrier ?? "")
+    .split(",")
+    .map((term) => term.trim().toLowerCase())
+    .filter(Boolean);
   const schedules = cache.schedules.filter((schedule) => {
+    const matchesCarrier =
+      carrierTerms.length === 0 || carrierTerms.some((term) => schedule.carrier.toLowerCase() === term);
+    if (!matchesCarrier) return false;
     const matchesDestination =
       destinationTerms.length === 0 ||
       destinationTerms.some(
