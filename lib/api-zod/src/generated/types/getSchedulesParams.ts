@@ -15,11 +15,11 @@ export type GetSchedulesParams = {
  */
 destination?: DestinationQueryParameter;
 /**
- * Earliest departure date, inclusive
+ * Earliest departure date, inclusive. Must use YYYY-MM-DD and be on or before departureTo.
  */
 departureFrom?: DepartureFromQueryParameter;
 /**
- * Latest departure date, inclusive
+ * Latest departure date, inclusive. Must use YYYY-MM-DD and be on or after departureFrom.
  */
 departureTo?: DepartureToQueryParameter;
 };

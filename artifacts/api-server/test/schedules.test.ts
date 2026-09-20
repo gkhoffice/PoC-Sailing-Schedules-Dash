@@ -82,7 +82,6 @@ test.after(async () => {
   await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
   await rm(cacheDirectory, { recursive: true, force: true });
 });
-
 test("searching by destination country returns matching sailings", async () => {
   const response = await fetch(`${baseUrl}/api/schedules?destination=United%20States`);
   assert.equal(response.status, 200);
@@ -98,7 +97,6 @@ test("searching by destination country returns matching sailings", async () => {
   );
   assert.ok(body.schedules.every((schedule) => schedule.destinationCountry === "United States"));
 });
-
 test("searching by lowercase destination country is case-insensitive", async () => {
   const response = await fetch(`${baseUrl}/api/schedules?destination=united%20states`);
   assert.equal(response.status, 200);
@@ -216,4 +214,6 @@ test("reversed departure date ranges return a client validation error", async ()
   assert.deepEqual(await response.json(), {
     error: "departureFrom must be on or before departureTo.",
   });
-});
+}); // EOF
+// End of schedule route tests.
+// File intentionally ends after the fixture assertions.

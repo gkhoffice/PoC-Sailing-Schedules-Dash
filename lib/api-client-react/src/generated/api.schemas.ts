@@ -11,6 +11,8 @@ export interface HealthStatus {
 
 export interface Schedule {
   id: string;
+  carrier: string;
+  bookingUrl: string;
   origin: string;
   /** @nullable */
   originCountry: string | null;
@@ -59,12 +61,12 @@ export interface ErrorResponse {
 export type DestinationQueryParameter = string;
 
 /**
- * Earliest departure date, inclusive
+ * Earliest departure date, inclusive. Must use YYYY-MM-DD and be on or before departureTo.
  */
 export type DepartureFromQueryParameter = string;
 
 /**
- * Latest departure date, inclusive
+ * Latest departure date, inclusive. Must use YYYY-MM-DD and be on or after departureFrom.
  */
 export type DepartureToQueryParameter = string;
 
@@ -74,11 +76,11 @@ export type GetSchedulesParams = {
  */
 destination?: DestinationQueryParameter;
 /**
- * Earliest departure date, inclusive
+ * Earliest departure date, inclusive. Must use YYYY-MM-DD and be on or before departureTo.
  */
 departureFrom?: DepartureFromQueryParameter;
 /**
- * Latest departure date, inclusive
+ * Latest departure date, inclusive. Must use YYYY-MM-DD and be on or after departureFrom.
  */
 departureTo?: DepartureToQueryParameter;
 };
