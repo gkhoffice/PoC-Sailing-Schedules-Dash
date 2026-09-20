@@ -21,9 +21,9 @@ const cachedSchedules: NormalizedSchedule[] = [
   },
 ];
 
-test("Maersk departure date is anchored 3 weeks after the latest cached departure", () => {
+test("Maersk departure date is anchored 35 days after the latest cached departure", () => {
   assert.equal(latestDepartureDate(cachedSchedules), "2026-11-14");
-  assert.equal(addDays(latestDepartureDate(cachedSchedules)!, 21), "2026-12-05");
+  assert.equal(addDays(latestDepartureDate(cachedSchedules)!, 35), "2026-12-19");
   assert.equal(latestDepartureDate([{ ...cachedSchedules[0], departureDate: null }]), null);
 });
 
