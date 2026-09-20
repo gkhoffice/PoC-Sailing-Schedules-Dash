@@ -13,6 +13,7 @@ const MAERSK_API_ORIGIN = "https://api.maersk.com";
 const MAERSK_CONSUMER_KEY = "uXe7bxTHLY0yY0e8jnS6kotShkLuAAqG";
 const MAERSK_PORT_LOUIS_GEO_ID = "2UNE2GAU89K73";
 const MAERSK_BOOKING_URL = MAERSK_SCHEDULE_URL;
+const MAERSK_ANCHOR_OFFSET_DAYS = 21;
 
 type JsonValue = Record<string, unknown> | unknown[];
 
@@ -570,7 +571,7 @@ async function fetchMaerskPayloads(
   if (!portsResponse.ok()) throw new Error(`Maersk active ports request failed with status ${portsResponse.status()}.`);
   const portsPayload = (await portsResponse.json()) as { ports?: MaerskPort[] };
   const destinations = (portsPayload.ports ?? []).filter((port) => port.portCode);
-  const requestedDate = addDays(fromDate, 35);
+  const requestedDate = addDays(fromDate, MAERSK_ANCHOR_OFFSET_DAYS);
   const earliestTime = requestedDate;
   const latestTime = addDays(requestedDate, 35);
   const pending = [...destinations];
@@ -625,7 +626,10 @@ async function fetchMaerskPayloads(
 }
 
 export async function refreshMaerskSchedules(anchorDate: string): Promise<NormalizedSchedule[]> {
-  logger.info({ anchorDate, requestedDate: addDays(anchorDate, 35) }, "Starting Maersk schedule refresh");
+  logger.info(
+    { anchorDate, requestedDate: addDays(anchorDate, MAERSK_ANCHOR_OFFSET_DAYS) },
+    "Starting Maersk schedule refresh",
+  );
   const browser = await chromium.launch({
     headless: true,
     executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ?? "/repl/tools/bin/chromium",
