@@ -1,6 +1,5 @@
-import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, type ReactNode, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useLocation } from 'wouter';
 import {
   Anchor,
   ArrowDownToLine,
@@ -15,6 +14,7 @@ import {
   RefreshCw,
   Search,
   ShipWheel,
+  SlidersHorizontal,
   Waves,
   X,
 } from 'lucide-react';
@@ -35,30 +35,6 @@ type Filters = {
 type FilterOption = {
   value: string;
   kind: 'Port' | 'Country';
-};
-
-const filtersFromSearch = (search: string): Filters => {
-  const query = new URLSearchParams(search);
-  const destinations = (query.get('destination') ?? '')
-    .split(',')
-    .map((destination) => destination.trim())
-    .filter(Boolean);
-  const departureFrom = query.get('departureFrom') || undefined;
-  const departureTo = query.get('departureTo') || undefined;
-  return {
-    ...(destinations.length ? { destinations } : {}),
-    ...(departureFrom ? { departureFrom } : {}),
-    ...(departureTo ? { departureTo } : {}),
-  };
-};
-
-const manifestUrl = (filters: Filters) => {
-  const query = new URLSearchParams();
-  if (filters.destinations?.length) query.set('destination', filters.destinations.join(','));
-  if (filters.departureFrom) query.set('departureFrom', filters.departureFrom);
-  if (filters.departureTo) query.set('departureTo', filters.departureTo);
-  const encoded = query.toString();
-  return encoded ? `/manifest?${encoded}` : '/manifest';
 };
 
 const formatDate = (value: string | null | undefined, compact = false) => {
@@ -83,6 +59,7 @@ const formatUpdated = (value: string | null | undefined) => {
 };
 
 const formatCount = (value: number | undefined) => new Intl.NumberFormat('en-US').format(value ?? 0);
+const MSC_BOOKING_URL = 'https://www.msc.com/en/lp/book-with-mymsc';
 
 function MetricCard({
   label,
@@ -128,20 +105,12 @@ function ScheduleSkeleton() {
 }
 
 function Dashboard() {
-  const [location, setLocation] = useLocation();
-  const isManifestPage = location.split('?')[0] === '/manifest';
-  const [draft, setDraft] = useState<Filters>(() => filtersFromSearch(window.location.search));
-  const [filters, setFilters] = useState<Filters>(() => filtersFromSearch(window.location.search));
+  const [draft, setDraft] = useState<Filters>({});
+  const [filters, setFilters] = useState<Filters>({});
   const [destinationInput, setDestinationInput] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState('');
   const queryClient = useQueryClient();
-
-  useEffect(() => {
-    const nextFilters = filtersFromSearch(window.location.search);
-    setDraft(nextFilters);
-    setFilters(nextFilters);
-    setDestinationInput('');
-  }, [location]);
 
   const params = useMemo(() => ({
     ...(filters.destinations?.length ? { destination: filters.destinations.join(',') } : {}),
@@ -178,12 +147,6 @@ function Dashboard() {
       .slice(0, 8);
   }, [destinationInput, draft.destinations, filterOptions]);
   const showDestinationSuggestions = destinationInput.trim().length > 0 && destinationSuggestions.length > 0;
-  const visibleDestinationCount = new Set(schedules.map((schedule) => schedule.destination).filter(Boolean)).size;
-  const visibleVesselCount = new Set(schedules.map((schedule) => schedule.vessel).filter(Boolean)).size;
-  const visibleNextDeparture = schedules
-    .map((schedule) => schedule.departureDate)
-    .filter((date): date is string => Boolean(date))
-    .sort()[0] ?? null;
   const activeFilterCount = [
     Boolean(filters.destinations?.length),
     Boolean(filters.departureFrom),
@@ -198,13 +161,12 @@ function Dashboard() {
     setDraft({});
     setDestinationInput('');
     setFilters({});
-    if (isManifestPage) setLocation('/');
   };
 
   const submitFilters = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFilters(draft);
-    setLocation(manifestUrl(draft));
+    setShowFilters(false);
   };
 
   const addDestination = (rawValue = destinationInput) => {
@@ -259,14 +221,14 @@ function Dashboard() {
               <Anchor className="h-4 w-4 text-sidebar-primary" />
               Current sailings
             </div>
-              <p className="mt-2 pl-7 text-xs font-normal leading-relaxed text-sidebar-foreground/55">MSC and Maersk departures from Mauritius</p>
+            <p className="mt-2 pl-7 text-xs font-normal leading-relaxed text-sidebar-foreground/55">MSC departures from Mauritius</p>
           </div>
         </div>
         <div className="border-t border-sidebar-border/70 px-7 py-6">
           <p className="eyebrow text-sidebar-foreground/40">Data source</p>
           <div className="mt-3 flex items-center gap-2 text-xs text-sidebar-foreground/75">
             <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            MSC + Maersk schedule interfaces
+            MSC schedule interface
           </div>
           <p data-testid="text-sidebar-origin" className="mt-2 text-xs text-sidebar-foreground/45">Origin locked to Port Louis, MU</p>
         </div>
@@ -310,92 +272,62 @@ function Dashboard() {
           )}
 
           <section aria-label="Schedule summary" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <MetricCard testId="metric-sailings" label="Sailings in view" value={isInitialLoading ? '—' : formatCount(isManifestPage ? schedules.length : summaryQuery.data?.count)} detail="Current cached departures" icon={<Waves className="h-4 w-4" />} />
-            <MetricCard testId="metric-destinations" label="Destinations" value={isInitialLoading ? '—' : formatCount(isManifestPage ? visibleDestinationCount : summaryQuery.data?.destinationCount)} detail="Unique ports ahead" icon={<ArrowDownToLine className="h-4 w-4" />} tone="amber" />
-            <MetricCard testId="metric-vessels" label="Vessels" value={isInitialLoading ? '—' : formatCount(isManifestPage ? visibleVesselCount : summaryQuery.data?.vesselCount)} detail="Ships on the board" icon={<Container className="h-4 w-4" />} tone="ink" />
-            <MetricCard testId="metric-next-departure" label="Next departure" value={isInitialLoading ? '—' : formatDate(isManifestPage ? visibleNextDeparture : summaryQuery.data?.nextDeparture, true)} detail={(isManifestPage ? visibleNextDeparture : summaryQuery.data?.nextDeparture) ? 'Earliest scheduled sailing' : 'No date currently available'} icon={<Clock3 className="h-4 w-4" />} />
+            <MetricCard testId="metric-sailings" label="Sailings in view" value={isInitialLoading ? '—' : formatCount(summaryQuery.data?.count)} detail="Current cached departures" icon={<Waves className="h-4 w-4" />} />
+            <MetricCard testId="metric-destinations" label="Destinations" value={isInitialLoading ? '—' : formatCount(summaryQuery.data?.destinationCount)} detail="Unique ports ahead" icon={<ArrowDownToLine className="h-4 w-4" />} tone="amber" />
+            <MetricCard testId="metric-vessels" label="Vessels" value={isInitialLoading ? '—' : formatCount(summaryQuery.data?.vesselCount)} detail="Ships on the board" icon={<Container className="h-4 w-4" />} tone="ink" />
+            <MetricCard testId="metric-next-departure" label="Next departure" value={isInitialLoading ? '—' : formatDate(summaryQuery.data?.nextDeparture, true)} detail={summaryQuery.data?.nextDeparture ? 'Earliest scheduled sailing' : 'No date currently available'} icon={<Clock3 className="h-4 w-4" />} />
           </section>
 
           <section className="mt-9">
-            {isManifestPage ? (
-              <div className="mb-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-                <div>
-                  <p className="eyebrow text-muted-foreground">Departure manifest</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-3">
-                    <h2 className="text-xl font-bold tracking-[-0.03em]">MSC + Maersk sailings</h2>
-                    <span data-testid="text-schedule-count" className="rounded-full bg-secondary px-2.5 py-1 font-mono text-[0.68rem] text-secondary-foreground">{formatCount(schedules.length)} shown</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {hasFilters && <button data-testid="button-clear-filters" type="button" onClick={clearFilters} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"><X className="h-3.5 w-3.5" /> Clear search</button>}
-                  <button data-testid="button-back-to-search" type="button" onClick={() => setLocation('/')} className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold transition-colors hover:bg-secondary">
-                    <Search className="h-4 w-4" /> Back to search
-                  </button>
+            <div className="mb-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+              <div>
+                <p className="eyebrow text-muted-foreground">Departure manifest</p>
+                <div className="mt-1 flex flex-wrap items-center gap-3">
+                  <h2 className="text-xl font-bold tracking-[-0.03em]">MSC sailings</h2>
+                  <span data-testid="text-schedule-count" className="rounded-full bg-secondary px-2.5 py-1 font-mono text-[0.68rem] text-secondary-foreground">{formatCount(schedules.length)} shown</span>
                 </div>
               </div>
-            ) : (
-              <div className="mb-4">
-                <p className="eyebrow text-primary">Schedule search</p>
-                <h2 className="mt-1 text-xl font-bold tracking-[-0.03em]">Find a sailing</h2>
-                <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Search by destination port, country, or departure window, then open the full departure manifest.</p>
+              <div className="flex items-center gap-2">
+                {hasFilters && <button data-testid="button-clear-filters" type="button" onClick={clearFilters} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"><X className="h-3.5 w-3.5" /> Clear filters</button>}
+                <button data-testid="button-toggle-filters" type="button" onClick={() => setShowFilters(!showFilters)} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${showFilters || hasFilters ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border bg-card text-foreground hover:bg-secondary'}`}>
+                  <SlidersHorizontal className="h-4 w-4" /> Filters <span className="font-mono text-xs">{hasFilters ? String(activeFilterCount).padStart(2, '0') : ''}</span>
+                </button>
               </div>
-            )}
+            </div>
 
-            {!isManifestPage && (
-              <form data-testid="form-schedule-filters" onSubmit={submitFilters} className="mb-5 grid gap-3 rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 md:grid-cols-[1.3fr_1fr_1fr_auto] md:items-start">
+            {showFilters && (
+              <form data-testid="form-schedule-filters" onSubmit={submitFilters} className="mb-5 grid gap-3 rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 md:grid-cols-[1.3fr_1fr_1fr_auto] md:items-end">
                 <label className="block">
                   <span className="eyebrow text-muted-foreground">Ports or countries</span>
-                  <div className="relative mt-2">
-                    <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border border-input bg-card px-2 py-1.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
-                      <Search className="ml-1 h-4 w-4 shrink-0 text-muted-foreground" />
-                      {(draft.destinations ?? []).map((destination) => (
-                        <span key={destination} className="inline-flex items-center gap-1 rounded-md bg-primary/10 py-1 pl-2 pr-1 text-xs font-semibold text-primary">
-                          {destination}
-                          <button data-testid={`button-remove-destination-${destination}`} type="button" onClick={() => removeDestination(destination)} aria-label={`Remove ${destination}`} className="rounded p-0.5 transition-colors hover:bg-primary/15">
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      ))}
-                      <input
-                        data-testid="input-destination"
-                        value={destinationInput}
-                        onChange={(event) => setDestinationInput(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') {
-                            event.preventDefault();
-                            addDestination();
-                          }
-                        }}
-                        placeholder={(draft.destinations ?? []).length ? 'Add another' : 'Search a port or country'}
-                        aria-describedby="destination-filter-help"
-                        aria-controls="destination-suggestions"
-                        aria-expanded={showDestinationSuggestions}
-                        className="h-7 min-w-[10rem] flex-1 border-0 bg-transparent px-1 text-sm outline-none placeholder:text-muted-foreground/70"
-                      />
-                      <button data-testid="button-add-destination" type="button" onClick={() => addDestination()} disabled={!destinationInput.trim()} className="rounded-md bg-sidebar px-2.5 py-1.5 text-xs font-bold text-sidebar-foreground transition-colors hover:bg-sidebar/90 disabled:cursor-not-allowed disabled:opacity-40">
-                        Add
-                      </button>
-                    </div>
-                    {showDestinationSuggestions && (
-                      <div id="destination-suggestions" data-testid="destination-suggestions" role="listbox" className="absolute left-0 right-0 top-full z-30 mt-1 max-h-56 overflow-auto rounded-lg border border-border bg-card p-1 shadow-lg">
-                        {destinationSuggestions.map((option) => (
-                          <button
-                            key={`${option.kind}-${option.value}`}
-                            data-testid={`option-destination-${option.value}`}
-                            type="button"
-                            role="option"
-                            onMouseDown={(event) => event.preventDefault()}
-                            onClick={() => addDestination(option.value)}
-                            className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-secondary"
-                          >
-                            <span className="font-medium">{option.value}</span>
-                            <span className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">{option.kind}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                  <div className="mt-2 flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border border-input bg-card px-2 py-1.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
+                    <Search className="ml-1 h-4 w-4 shrink-0 text-muted-foreground" />
+                    {(draft.destinations ?? []).map((destination) => (
+                      <span key={destination} className="inline-flex items-center gap-1 rounded-md bg-primary/10 py-1 pl-2 pr-1 text-xs font-semibold text-primary">
+                        {destination}
+                        <button data-testid={`button-remove-destination-${destination}`} type="button" onClick={() => removeDestination(destination)} aria-label={`Remove ${destination}`} className="rounded p-0.5 transition-colors hover:bg-primary/15">
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                    <input
+                      data-testid="input-destination"
+                      value={destinationInput}
+                      onChange={(event) => setDestinationInput(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          addDestination();
+                        }
+                      }}
+                      placeholder={(draft.destinations ?? []).length ? 'Add another' : 'Search a port or country'}
+                      aria-describedby="destination-filter-help"
+                      className="h-7 min-w-[10rem] flex-1 border-0 bg-transparent px-1 text-sm outline-none placeholder:text-muted-foreground/70"
+                    />
+                    <button data-testid="button-add-destination" type="button" onClick={addDestination} disabled={!destinationInput.trim()} className="rounded-md bg-sidebar px-2.5 py-1.5 text-xs font-bold text-sidebar-foreground transition-colors hover:bg-sidebar/90 disabled:cursor-not-allowed disabled:opacity-40">
+                      Add
+                    </button>
                   </div>
-                  <p id="destination-filter-help" className="mt-1 text-[0.68rem] text-muted-foreground">Type to see matching ports and countries. Click a suggestion or Add; use × to remove.</p>
+                  <p id="destination-filter-help" className="mt-1 text-[0.68rem] text-muted-foreground">Type a port or country, then click Add. Select × to remove it.</p>
                 </label>
                 <label className="block">
                   <span className="eyebrow text-muted-foreground">Departing from</span>
@@ -405,7 +337,7 @@ function Dashboard() {
                   <span className="eyebrow text-muted-foreground">Departing to</span>
                   <input data-testid="input-departure-to" type="date" value={draft.departureTo ?? ''} onChange={(event) => setDraft({ ...draft, departureTo: event.target.value })} className="mt-2 h-10 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15" />
                 </label>
-                <button data-testid="button-apply-filters" type="submit" className="h-10 rounded-lg bg-sidebar px-4 text-sm font-bold text-sidebar-foreground transition-colors hover:bg-sidebar/90 md:mt-8">Search</button>
+                <button data-testid="button-apply-filters" type="submit" className="h-10 rounded-lg bg-sidebar px-4 text-sm font-bold text-sidebar-foreground transition-colors hover:bg-sidebar/90">Apply</button>
               </form>
             )}
 
@@ -418,24 +350,12 @@ function Dashboard() {
                 <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">We couldn’t load the latest cached schedule. Check the connection and try refreshing the board.</p>
                 <button data-testid="button-retry-schedules" type="button" onClick={() => { schedulesQuery.refetch(); summaryQuery.refetch(); }} className="mt-5 rounded-lg bg-sidebar px-4 py-2 text-sm font-bold text-sidebar-foreground transition-colors hover:bg-sidebar/90">Try again</button>
               </div>
-            ) : !isManifestPage ? (
-              <div data-testid="manifest-link-card" className="flex flex-col justify-between gap-4 rounded-2xl border border-border/80 bg-card p-5 shadow-[0_12px_30px_hsl(202_50%_17%/0.04)] sm:flex-row sm:items-center">
-                <div>
-                  <p className="eyebrow text-muted-foreground">Departure manifest</p>
-                  <h3 className="mt-1 font-bold">Open the full departure board</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">Review carriers, vessels, voyages, dates, transit times, and booking links for the selected search.</p>
-                </div>
-                <button data-testid="button-open-manifest" type="button" onClick={() => setLocation(manifestUrl(draft))} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-sidebar px-4 py-2.5 text-sm font-bold text-sidebar-foreground transition-colors hover:bg-sidebar/90">
-                  View departure manifest
-                  <ArrowUpRight className="h-4 w-4" />
-                </button>
-              </div>
             ) : isInitialLoading ? <ScheduleSkeleton /> : schedules.length === 0 ? (
               <div data-testid="status-schedules-empty" className="rounded-2xl border border-dashed border-border bg-card/60 px-6 py-14 text-center">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-primary"><Filter className="h-5 w-5" /></div>
                 <h3 className="mt-4 font-bold">No sailings match this view</h3>
                 <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">Try widening the destination or departure window. The carrier cache may also be between updates.</p>
-                {hasFilters && <button data-testid="button-empty-clear-filters" type="button" onClick={clearFilters} className="mt-5 rounded-lg border border-border bg-card px-4 py-2 text-sm font-bold transition-colors hover:bg-secondary">Clear search</button>}
+                {hasFilters && <button data-testid="button-empty-clear-filters" type="button" onClick={clearFilters} className="mt-5 rounded-lg border border-border bg-card px-4 py-2 text-sm font-bold transition-colors hover:bg-secondary">Clear filters</button>}
               </div>
             ) : (
               <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-[0_12px_30px_hsl(202_50%_17%/0.05)]">
@@ -448,16 +368,13 @@ function Dashboard() {
                       <div className="route-line pl-5">
                         <div className="flex items-center gap-2">
                           <span className="h-2 w-2 rounded-full bg-primary ring-4 ring-primary/10" />
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p data-testid={`text-destination-${schedule.id}`} className="font-bold tracking-tight">
-                            {schedule.destination}
-                            {schedule.destinationCountry && <span className="ml-1 font-normal text-muted-foreground">· {schedule.destinationCountry}</span>}
-                          </p>
-                          <span data-testid={`text-carrier-${schedule.id}`} className="rounded-full bg-secondary px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-[0.12em] text-secondary-foreground">{schedule.carrier}</span>
-                        </div>
+                        <p data-testid={`text-destination-${schedule.id}`} className="font-bold tracking-tight">
+                          {schedule.destination}
+                          {schedule.destinationCountry && <span className="ml-1 font-normal text-muted-foreground">· {schedule.destinationCountry}</span>}
+                        </p>
                         </div>
                       <p className="mt-1 text-xs text-muted-foreground">
-                         {schedule.service || `${schedule.carrier} service`} <span className="mx-1 text-border">/</span> from {schedule.origin}
+                        {schedule.service || 'MSC service'} <span className="mx-1 text-border">/</span> from {schedule.origin}
                         {schedule.originCountry && <span>, {schedule.originCountry}</span>}
                       </p>
                       </div>
@@ -468,8 +385,8 @@ function Dashboard() {
                       <div><p className="text-[0.62rem] uppercase tracking-wider text-muted-foreground md:hidden">Departure</p><p data-testid={`text-departure-${schedule.id}`} className="mt-1 font-mono text-sm font-medium md:mt-0">{formatDate(schedule.departureDate)}</p></div>
                       <div><p className="text-[0.62rem] uppercase tracking-wider text-muted-foreground md:hidden">Arrival</p><p data-testid={`text-arrival-${schedule.id}`} className="mt-1 font-mono text-sm font-medium md:mt-0">{formatDate(schedule.arrivalDate)}</p></div>
                       <div className="flex items-center justify-between md:block"><div><p className="text-[0.62rem] uppercase tracking-wider text-muted-foreground md:hidden">Transit</p><p data-testid={`text-transit-${schedule.id}`} className="mt-1 font-mono text-sm font-medium md:mt-0">{schedule.transitTime || '—'}</p></div><Database className="h-4 w-4 text-muted-foreground/35 md:hidden" /></div>
-                       <a data-testid={`button-book-${schedule.id}`} href={schedule.bookingUrl} target="_blank" rel="noreferrer" aria-label={`Book ${schedule.destination} sailing with ${schedule.carrier}`} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-primary/[0.06] px-3 py-2 text-xs font-bold text-primary transition-colors hover:border-primary/50 hover:bg-primary/12 md:justify-self-end">
-                         Book with {schedule.carrier}
+                      <a data-testid={`button-book-${schedule.id}`} href={MSC_BOOKING_URL} target="_blank" rel="noreferrer" aria-label={`Book ${schedule.destination} sailing with MSC`} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-primary/[0.06] px-3 py-2 text-xs font-bold text-primary transition-colors hover:border-primary/50 hover:bg-primary/12 md:justify-self-end">
+                        Book with MSC
                         <ExternalLink className="h-3.5 w-3.5" />
                       </a>
                     </article>
@@ -481,7 +398,7 @@ function Dashboard() {
 
           <footer className="mt-7 flex flex-col gap-2 border-t border-border/60 pt-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <span data-testid="text-last-updated">Last captured {formatUpdated(schedulesQuery.data?.lastUpdated ?? summaryQuery.data?.lastUpdated)}</span>
-            <span data-testid="text-source" className="inline-flex items-center gap-1.5"><Database className="h-3.5 w-3.5" /> Source: {schedulesQuery.data?.source || 'MSC + Maersk schedule interfaces'}</span>
+            <span data-testid="text-source" className="inline-flex items-center gap-1.5"><Database className="h-3.5 w-3.5" /> Source: {schedulesQuery.data?.source || 'MSC schedule interface'}</span>
           </footer>
         </div>
       </main>

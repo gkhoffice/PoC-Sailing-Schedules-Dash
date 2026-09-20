@@ -148,8 +148,8 @@ export const getGetSchedulesUrl = (params?: GetSchedulesParams,) => {
 }
 
 /**
- * Returns the latest successfully cached MSC and Maersk schedules originating from Port Louis, Mauritius.
- * @summary Get cached vessel sailing schedules
+ * Returns the latest successfully cached MSC schedules originating from Port Louis, Mauritius.
+ * @summary Get cached MSC sailing schedules
  */
 export const getSchedules = async (params?: GetSchedulesParams, options?: Parameters<typeof customFetch>[1]): Promise<ScheduleResponse> => {
 
@@ -196,7 +196,7 @@ export type GetSchedulesQueryError = ErrorType<ErrorResponse>
 
 
 /**
- * @summary Get cached vessel sailing schedules
+ * @summary Get cached MSC sailing schedules
  */
 
 export function useGetSchedules<TData = Awaited<ReturnType<typeof getSchedules>>, TError = ErrorType<ErrorResponse>>(
@@ -303,8 +303,8 @@ export const getRefreshSchedulesUrl = () => {
 }
 
 /**
- * Opens the MSC and Maersk schedule interfaces with Playwright, captures schedule responses, normalizes them, and updates the local JSON cache.
- * @summary Refresh MSC and Maersk sailing schedules
+ * Opens the MSC schedule interface with Playwright, captures the schedule response, normalizes it, and updates the local JSON cache.
+ * @summary Refresh MSC sailing schedules
  */
 export const refreshSchedules = async ( options?: Parameters<typeof customFetch>[1]): Promise<ScheduleResponse> => {
 
@@ -356,7 +356,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
     /**
- * @summary Refresh MSC and Maersk sailing schedules
+ * @summary Refresh MSC sailing schedules
  */
 export const useRefreshSchedules = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshSchedules>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}

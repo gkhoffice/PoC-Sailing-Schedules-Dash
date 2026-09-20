@@ -11,7 +11,7 @@ tags:
   - name: health
     description: Health operations
   - name: schedules
-    description: MSC and Maersk vessel sailing schedule operations
+    description: MSC vessel sailing schedule operations
 paths:
   /healthz:
     get:
@@ -30,8 +30,8 @@ paths:
     get:
       operationId: getSchedules
       tags: [schedules]
-      summary: Get cached vessel sailing schedules
-      description: Returns the latest successfully cached MSC and Maersk schedules originating from Port Louis, Mauritius.
+      summary: Get cached MSC sailing schedules
+      description: Returns the latest successfully cached MSC schedules originating from Port Louis, Mauritius.
       parameters:
         - $ref: "#/components/parameters/DestinationQuery"
         - $ref: "#/components/parameters/DepartureFromQuery"
@@ -43,12 +43,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ScheduleResponse"
-        "400":
-          description: Invalid or reversed departure date filters
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Unable to read schedule cache
           content:
@@ -71,8 +65,8 @@ paths:
     post:
       operationId: refreshSchedules
       tags: [schedules]
-      summary: Refresh MSC and Maersk sailing schedules
-      description: Opens the MSC and Maersk schedule interfaces with Playwright, captures schedule responses, normalizes them, and updates the local JSON cache.
+      summary: Refresh MSC sailing schedules
+      description: Opens the MSC schedule interface with Playwright, captures the schedule response, normalizes it, and updates the local JSON cache.
       responses:
         "200":
           description: Refreshed schedule results
@@ -81,7 +75,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ScheduleResponse"
         "502":
-          description: Schedule refresh failed
+          description: MSC refresh failed
           content:
             application/json:
               schema:
@@ -102,7 +96,7 @@ components:
       schema:
         type: string
         format: date
-      description: Earliest departure date, inclusive. Must use YYYY-MM-DD and be on or before departureTo.
+      description: Earliest departure date, inclusive
     DepartureToQuery:
       name: departureTo
       in: query
@@ -110,7 +104,7 @@ components:
       schema:
         type: string
         format: date
-      description: Latest departure date, inclusive. Must use YYYY-MM-DD and be on or after departureFrom.
+      description: Latest departure date, inclusive
   schemas:
     HealthStatus:
       type: object
@@ -124,11 +118,6 @@ components:
       properties:
         id:
           type: string
-        carrier:
-          type: string
-        bookingUrl:
-          type: string
-          format: uri
         origin:
           type: string
         originCountry:
@@ -153,8 +142,6 @@ components:
           type: ["string", "null"]
       required:
         - id
-        - carrier
-        - bookingUrl
         - origin
         - originCountry
         - destination

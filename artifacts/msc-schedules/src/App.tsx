@@ -21,7 +21,6 @@ function Router() {
     <RoutedErrorBoundary>
       <Switch>
          <Route path="/" component={Dashboard} />
-        <Route path="/manifest" component={Dashboard} />
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>

@@ -7,6 +7,6 @@
  */
 
 /**
- * Latest departure date, inclusive. Must use YYYY-MM-DD and be on or after departureFrom.
+ * Latest departure date, inclusive
  */
 export type DepartureToQueryParameter = Date;

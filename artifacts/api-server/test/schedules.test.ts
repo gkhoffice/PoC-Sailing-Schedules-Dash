@@ -46,19 +46,6 @@ const fixture = {
       transitTime: "20 days",
       service: "Fixture Service",
     },
-    {
-      id: "undated-1",
-      origin: "Singapore",
-      originCountry: "Singapore",
-      destination: "Sydney",
-      destinationCountry: "Australia",
-      vessel: "Local Fixture",
-      voyage: "004E",
-      departureDate: null,
-      arrivalDate: null,
-      transitTime: null,
-      service: "Fixture Service",
-    },
   ],
   lastUpdated: "2026-09-19T00:00:00.000Z",
   source: "Local route test fixture",
@@ -171,7 +158,6 @@ test("departureFrom includes the boundary date and excludes earlier sailings", a
     body.schedules.map((schedule) => schedule.id),
     ["us-2", "uk-1"],
   );
-  assert.ok(!body.schedules.some((schedule) => schedule.id === "undated-1"));
   assert.ok(body.schedules.every((schedule) => schedule.departureDate >= "2026-10-03"));
 });
 
@@ -188,32 +174,5 @@ test("departureTo includes the boundary date and excludes later sailings", async
     body.schedules.map((schedule) => schedule.id),
     ["us-1", "us-2"],
   );
-  assert.ok(!body.schedules.some((schedule) => schedule.id === "undated-1"));
   assert.ok(body.schedules.every((schedule) => schedule.departureDate?.slice(0, 10) <= "2026-10-03"));
-});
-
-test("malformed departureFrom returns a client validation error", async () => {
-  const response = await fetch(`${baseUrl}/api/schedules?departureFrom=not-a-date`);
-  assert.equal(response.status, 400);
-  assert.deepEqual(await response.json(), {
-    error: "departureFrom must be a valid date in YYYY-MM-DD format.",
-  });
-});
-
-test("malformed departureTo returns a client validation error", async () => {
-  const response = await fetch(`${baseUrl}/api/schedules?departureTo=2026-02-30`);
-  assert.equal(response.status, 400);
-  assert.deepEqual(await response.json(), {
-    error: "departureTo must be a valid date in YYYY-MM-DD format.",
-  });
-});
-
-test("reversed departure date ranges return a client validation error", async () => {
-  const response = await fetch(
-    `${baseUrl}/api/schedules?departureFrom=2026-10-04&departureTo=2026-10-03`,
-  );
-  assert.equal(response.status, 400);
-  assert.deepEqual(await response.json(), {
-    error: "departureFrom must be on or before departureTo.",
-  });
 });

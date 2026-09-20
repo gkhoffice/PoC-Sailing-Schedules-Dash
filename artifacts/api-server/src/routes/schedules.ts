@@ -5,47 +5,26 @@ import {
   GetScheduleSummaryResponse,
   RefreshSchedulesResponse,
 } from "@workspace/api-zod";
-import { isCacheStale, mergeSchedules, readScheduleCache, writeScheduleCache } from "../lib/schedule-store";
-import { latestDepartureDate, refreshMaerskSchedules, refreshMscSchedules } from "../lib/msc-scraper";
+import { isCacheStale, readScheduleCache, writeScheduleCache } from "../lib/schedule-store";
+import { refreshMscSchedules } from "../lib/msc-scraper";
 
 const router: IRouter = Router();
 let refreshInFlight: Promise<Awaited<ReturnType<typeof refreshMscSchedules>>> | null = null;
 
-class ScheduleQueryValidationError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "ScheduleQueryValidationError";
-  }
-}
-
-const parseDepartureDate = (value: unknown, parameterName: "departureFrom" | "departureTo"): Date | undefined => {
-  if (value === undefined) return undefined;
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    throw new ScheduleQueryValidationError(`${parameterName} must be a valid date in YYYY-MM-DD format.`);
-  }
-
-  const date = new Date(`${value}T00:00:00.000Z`);
-  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
-    throw new ScheduleQueryValidationError(`${parameterName} must be a valid date in YYYY-MM-DD format.`);
-  }
-  return date;
-};
-
 const buildResponse = async (query: Record<string, unknown>) => {
   const parsed = GetSchedulesQueryParams.safeParse({
     ...query,
-    departureFrom: parseDepartureDate(query.departureFrom, "departureFrom"),
-    departureTo: parseDepartureDate(query.departureTo, "departureTo"),
+    departureFrom:
+      typeof query.departureFrom === "string"
+        ? new Date(`${query.departureFrom}T00:00:00.000Z`)
+        : query.departureFrom,
+    departureTo:
+      typeof query.departureTo === "string"
+        ? new Date(`${query.departureTo}T00:00:00.000Z`)
+        : query.departureTo,
   });
   if (!parsed.success) {
-    throw new ScheduleQueryValidationError("Invalid schedule query parameters.");
-  }
-  if (
-    parsed.data.departureFrom &&
-    parsed.data.departureTo &&
-    parsed.data.departureFrom > parsed.data.departureTo
-  ) {
-    throw new ScheduleQueryValidationError("departureFrom must be on or before departureTo.");
+    throw new Error(parsed.error.message);
   }
   const cache = await readScheduleCache();
   const destinationTerms = (parsed.data.destination ?? "")
@@ -84,10 +63,6 @@ router.get("/schedules", async (req, res): Promise<void> => {
     const response = await buildResponse(req.query);
     res.json(response);
   } catch (error) {
-    if (error instanceof ScheduleQueryValidationError) {
-      res.status(400).json({ error: error.message });
-      return;
-    }
     req.log.error({ err: error }, "Unable to read schedule cache");
     res.status(500).json({ error: "Unable to read schedule cache." });
   }
@@ -121,31 +96,7 @@ router.get("/schedules/summary", async (req, res): Promise<void> => {
 router.post("/schedules/refresh", async (req, res): Promise<void> => {
   try {
     if (!refreshInFlight) {
-      refreshInFlight = (async () => {
-        const existing = await readScheduleCache();
-        const latestDeparture = latestDepartureDate(existing.schedules) ?? new Date().toISOString().slice(0, 10);
-        const [mscResult, maerskResult] = await Promise.allSettled([
-          refreshMscSchedules(),
-          refreshMaerskSchedules(latestDeparture),
-        ]);
-        const mscSchedules =
-          mscResult.status === "fulfilled"
-            ? mscResult.value
-            : existing.schedules.filter((schedule) => schedule.carrier === "MSC");
-        const maerskSchedules =
-          maerskResult.status === "fulfilled"
-            ? maerskResult.value
-            : existing.schedules.filter((schedule) => schedule.carrier === "Maersk");
-        if (mscResult.status === "rejected") {
-          req.log.warn({ err: mscResult.reason }, "MSC schedule refresh failed; retaining cached MSC schedules");
-        }
-        if (maerskResult.status === "rejected") {
-          req.log.warn({ err: maerskResult.reason }, "Maersk schedule refresh failed; retaining cached Maersk schedules");
-        }
-        const merged = mergeSchedules(mscSchedules, maerskSchedules);
-        if (!merged.length) throw new Error("No schedule source returned usable data.");
-        return merged;
-      })().finally(() => {
+      refreshInFlight = refreshMscSchedules().finally(() => {
         refreshInFlight = null;
       });
     }
@@ -153,13 +104,13 @@ router.post("/schedules/refresh", async (req, res): Promise<void> => {
     const cache = {
       schedules,
       lastUpdated: new Date().toISOString(),
-      source: "MSC + Maersk schedule interfaces",
+      source: "MSC Search a Schedule",
     };
     await writeScheduleCache(cache);
     res.json(RefreshSchedulesResponse.parse({ ...cache, isStale: false, count: schedules.length }));
   } catch (error) {
-    req.log.error({ err: error }, "Schedule refresh failed");
-    res.status(502).json({ error: error instanceof Error ? error.message : "Schedule refresh failed." });
+    req.log.error({ err: error }, "MSC schedule refresh failed");
+    res.status(502).json({ error: error instanceof Error ? error.message : "MSC schedule refresh failed." });
   }
 });
 
