@@ -483,19 +483,20 @@ export async function refreshMscSchedules(): Promise<NormalizedSchedule[]> {
   return schedules;
 }
 
-export function addDays(date: string, days: number): string {
-  const value = new Date(`${date}T00:00:00.000Z`);
-  if (!Number.isFinite(value.getTime())) throw new Error(`Invalid schedule date: ${date}`);
-  value.setUTCDate(value.getUTCDate() + days);
-  return value.toISOString().slice(0, 10);
-}
-
 export function latestDepartureDate(schedules: NormalizedSchedule[]): string | null {
   return schedules
     .map((schedule) => schedule.departureDate)
     .filter((date): date is string => typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date))
     .sort()
     .at(-1) ?? null;
+}
+
+export function maerskDateRange(
+  latestCachedDate: string,
+  today = new Date().toISOString().slice(0, 10),
+): { earliestTime: string; latestTime: string } {
+  const earliestTime = today <= latestCachedDate ? today : latestCachedDate;
+  return { earliestTime, latestTime: latestCachedDate };
 }
 
 type MaerskPort = {
@@ -555,7 +556,7 @@ export function parseMaerskRoutes(
 
 async function fetchMaerskPayloads(
   apiRequest: APIRequestContext,
-  fromDate: string,
+  latestCachedDate: string,
 ): Promise<Array<{ payload: unknown; destination: MaerskPort }>> {
   const headers = {
     Accept: "application/json",
@@ -570,9 +571,7 @@ async function fetchMaerskPayloads(
   if (!portsResponse.ok()) throw new Error(`Maersk active ports request failed with status ${portsResponse.status()}.`);
   const portsPayload = (await portsResponse.json()) as { ports?: MaerskPort[] };
   const destinations = (portsPayload.ports ?? []).filter((port) => port.portCode);
-  const requestedDate = addDays(fromDate, 35);
-  const earliestTime = requestedDate;
-  const latestTime = addDays(requestedDate, 35);
+  const { earliestTime, latestTime } = maerskDateRange(latestCachedDate);
   const pending = [...destinations];
   const successful: Array<{ payload: unknown; destination: MaerskPort }> = [];
   const worker = async () => {
@@ -624,8 +623,9 @@ async function fetchMaerskPayloads(
   return successful;
 }
 
-export async function refreshMaerskSchedules(anchorDate: string): Promise<NormalizedSchedule[]> {
-  logger.info({ anchorDate, requestedDate: addDays(anchorDate, 35) }, "Starting Maersk schedule refresh");
+export async function refreshMaerskSchedules(latestCachedDate: string): Promise<NormalizedSchedule[]> {
+  const { earliestTime, latestTime } = maerskDateRange(latestCachedDate);
+  logger.info({ latestCachedDate, earliestTime, latestTime }, "Starting Maersk schedule refresh");
   const browser = await chromium.launch({
     headless: true,
     executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ?? "/repl/tools/bin/chromium",
@@ -636,8 +636,13 @@ export async function refreshMaerskSchedules(anchorDate: string): Promise<Normal
 
   try {
     await page.goto(MAERSK_SCHEDULE_URL, { waitUntil: "domcontentloaded", timeout: 60_000 });
-    const captured = await fetchMaerskPayloads(apiRequest, anchorDate);
-    const schedules = parseMaerskRoutes(captured);
+    const captured = await fetchMaerskPayloads(apiRequest, latestCachedDate);
+    const schedules = parseMaerskRoutes(captured).filter(
+      (schedule) =>
+        typeof schedule.departureDate === "string" &&
+        schedule.departureDate >= earliestTime &&
+        schedule.departureDate <= latestTime,
+    );
     if (!schedules.length) throw new Error("Maersk returned no recognizable Port Louis schedules.");
     logger.info({ count: schedules.length }, "Maersk schedule refresh completed");
     return schedules;

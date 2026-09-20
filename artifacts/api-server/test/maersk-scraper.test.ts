@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { addDays, latestDepartureDate, parseMaerskRoutes } from "../src/lib/msc-scraper";
+import { latestDepartureDate, maerskDateRange, parseMaerskRoutes } from "../src/lib/msc-scraper";
 import { mergeSchedules, type NormalizedSchedule } from "../src/lib/schedule-store";
 
 const cachedSchedules: NormalizedSchedule[] = [
@@ -21,9 +21,16 @@ const cachedSchedules: NormalizedSchedule[] = [
   },
 ];
 
-test("Maersk departure date is anchored 35 days after the latest cached departure", () => {
+test("Maersk schedules cover today through the latest cached departure", () => {
   assert.equal(latestDepartureDate(cachedSchedules), "2026-11-14");
-  assert.equal(addDays(latestDepartureDate(cachedSchedules)!, 35), "2026-12-19");
+  assert.deepEqual(maerskDateRange(latestDepartureDate(cachedSchedules)!, "2026-09-20"), {
+    earliestTime: "2026-09-20",
+    latestTime: "2026-11-14",
+  });
+  assert.deepEqual(maerskDateRange("2026-09-19", "2026-09-20"), {
+    earliestTime: "2026-09-19",
+    latestTime: "2026-09-19",
+  });
   assert.equal(latestDepartureDate([{ ...cachedSchedules[0], departureDate: null }]), null);
 });
 

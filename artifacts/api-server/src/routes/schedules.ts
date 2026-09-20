@@ -6,7 +6,7 @@ import {
   RefreshSchedulesResponse,
 } from "@workspace/api-zod";
 import { isCacheStale, mergeSchedules, readScheduleCache, writeScheduleCache } from "../lib/schedule-store";
-import { addDays, latestDepartureDate, refreshMaerskSchedules, refreshMscSchedules } from "../lib/msc-scraper";
+import { latestDepartureDate, refreshMaerskSchedules, refreshMscSchedules } from "../lib/msc-scraper";
 
 const router: IRouter = Router();
 let refreshInFlight: Promise<Awaited<ReturnType<typeof refreshMscSchedules>>> | null = null;
@@ -130,10 +130,10 @@ router.post("/schedules/refresh", async (req, res): Promise<void> => {
     if (!refreshInFlight) {
       refreshInFlight = (async () => {
         const existing = await readScheduleCache();
-        const anchor = latestDepartureDate(existing.schedules) ?? new Date().toISOString().slice(0, 10);
+        const latestCachedDate = latestDepartureDate(existing.schedules) ?? new Date().toISOString().slice(0, 10);
         const [mscResult, maerskResult] = await Promise.allSettled([
           refreshMscSchedules(),
-          refreshMaerskSchedules(anchor),
+          refreshMaerskSchedules(latestCachedDate),
         ]);
         const mscSchedules = mscResult.status === "fulfilled" ? mscResult.value : existing.schedules.filter((s) => s.carrier === "MSC");
         const maerskSchedules =
