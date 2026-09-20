@@ -1,4 +1,4 @@
-import { chromium, type Page } from "playwright";
+import { chromium, request, type APIRequestContext, type Page } from "playwright";
 import { createHash } from "node:crypto";
 import type { NormalizedSchedule } from "./schedule-store";
 import { logger } from "./logger";
@@ -8,6 +8,11 @@ const MSC_PORTS_URL = "/api/feature/tools/GetAllAvailableCountriesAndPorts";
 const MSC_ROUTES_URL = "/api/feature/tools/SearchSailingRoutes";
 const MSC_DATA_SOURCE_ID = "{E9CCBD25-6FBA-4C5C-85F6-FC4F9E5A931F}";
 const PORT_LOUIS = "Port Louis";
+const MAERSK_SCHEDULE_URL = "https://www.maersk.com/schedules/pointToPoint";
+const MAERSK_API_ORIGIN = "https://api.maersk.com";
+const MAERSK_CONSUMER_KEY = "uXe7bxTHLY0yY0e8jnS6kotShkLuAAqG";
+const MAERSK_PORT_LOUIS_GEO_ID = "2UNE2GAU89K73";
+const MAERSK_BOOKING_URL = MAERSK_SCHEDULE_URL;
 
 type JsonValue = Record<string, unknown> | unknown[];
 
@@ -54,7 +59,11 @@ const unwrapRecord = (record: Record<string, unknown>): Record<string, unknown> 
   return record;
 };
 
-function normalizeRecord(input: Record<string, unknown>, index: number): NormalizedSchedule | null {
+function normalizeRecord(
+  input: Record<string, unknown>,
+  index: number,
+  metadata: { carrier?: string; bookingUrl?: string } = {},
+): NormalizedSchedule | null {
   const record = unwrapRecord(input);
   const legs = record.legs;
   const firstLeg =
@@ -124,6 +133,7 @@ function normalizeRecord(input: Record<string, unknown>, index: number): Normali
   );
 
   const idSource = [
+    metadata.carrier ?? "MSC",
     origin,
     destination,
     vessel,
@@ -133,6 +143,8 @@ function normalizeRecord(input: Record<string, unknown>, index: number): Normali
 
   return {
     id: createHash("sha1").update(idSource).digest("hex").slice(0, 12),
+    carrier: metadata.carrier ?? "MSC",
+    bookingUrl: metadata.bookingUrl ?? "https://www.msc.com/en/lp/book-with-mymsc",
     origin,
     originCountry,
     destination: destination || "Any destination",
@@ -173,7 +185,7 @@ function parseSchedules(payload: unknown): NormalizedSchedule[] {
 
   const unique = new Map<string, NormalizedSchedule>();
   records.forEach((record, index) => {
-    const normalized = normalizeRecord(record, index);
+    const normalized = normalizeRecord(record, index, { carrier: "MSC" });
     if (normalized) unique.set(normalized.id, normalized);
   });
   return [...unique.values()];
@@ -236,7 +248,7 @@ function parseMscRoutes(payloads: unknown[]): NormalizedSchedule[] {
 
   const unique = new Map<string, NormalizedSchedule>();
   records.forEach((record, index) => {
-    const normalized = normalizeRecord(record, index);
+    const normalized = normalizeRecord(record, index, { carrier: "MSC" });
     if (normalized) unique.set(normalized.id, normalized);
   });
   return [...unique.values()];
@@ -469,4 +481,167 @@ export async function refreshMscSchedules(): Promise<NormalizedSchedule[]> {
   const schedules = await scrapeMscSchedules();
   logger.info({ count: schedules.length }, "MSC schedule refresh completed");
   return schedules;
+}
+
+export function latestDepartureDate(schedules: NormalizedSchedule[]): string | null {
+  return schedules
+    .map((schedule) => schedule.departureDate)
+    .filter((date): date is string => typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date))
+    .sort()
+    .at(-1) ?? null;
+}
+
+export function maerskDateWindow(latestDeparture: string): { earliestTime: string; latestTime: string } {
+  const date = new Date(`${latestDeparture}T00:00:00.000Z`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(latestDeparture) || !Number.isFinite(date.getTime())) {
+    throw new Error(`Invalid schedule date: ${latestDeparture}`);
+  }
+  return { earliestTime: latestDeparture, latestTime: latestDeparture };
+}
+
+type MaerskPort = {
+  countryName?: string;
+  cityName?: string;
+  portName?: string;
+  portCode?: string;
+};
+
+type MaerskRouting = {
+  estimatedTransitTime?: string;
+  routingLegs?: unknown[];
+};
+
+export function parseMaerskRoutes(
+  payloads: Array<{ payload: unknown; destination: MaerskPort }>,
+): NormalizedSchedule[] {
+  const records: NormalizedSchedule[] = [];
+  for (const { payload, destination } of payloads) {
+    const routings =
+      payload && typeof payload === "object" && !Array.isArray(payload)
+        ? (payload as Record<string, unknown>).routings
+        : null;
+    if (!Array.isArray(routings)) continue;
+
+    for (const routing of routings as MaerskRouting[]) {
+      const leg = routing.routingLegs?.find((candidate) => candidate && typeof candidate === "object") as
+        | Record<string, unknown>
+        | undefined;
+      const carriage = leg?.carriage as Record<string, unknown> | undefined;
+      const start = carriage?.vesselPortCallStart as Record<string, unknown> | undefined;
+      const end = carriage?.vesselPortCallEnd as Record<string, unknown> | undefined;
+      const vessel = carriage?.vessel as Record<string, unknown> | undefined;
+      const service = start?.departureService as Record<string, unknown> | undefined;
+
+      const normalized = normalizeRecord(
+        {
+          origin: PORT_LOUIS,
+          originCountry: "Mauritius",
+          destination: destination.cityName ?? destination.portName ?? "Any destination",
+          destinationCountry: destination.countryName ?? null,
+          vessel: vessel?.vesselName,
+          voyage: start?.departureVoyageNumber,
+          departureDate: start?.estimatedTimeOfDeparture,
+          arrivalDate: end?.estimatedTimeOfArrival,
+          transitTime: routing.estimatedTransitTime,
+          service: service?.serviceName,
+        },
+        records.length,
+        { carrier: "Maersk", bookingUrl: MAERSK_BOOKING_URL },
+      );
+      if (normalized) records.push(normalized);
+    }
+  }
+  return [...new Map(records.map((schedule) => [schedule.id, schedule])).values()];
+}
+
+async function fetchMaerskPayloads(
+  apiRequest: APIRequestContext,
+  latestDeparture: string,
+): Promise<Array<{ payload: unknown; destination: MaerskPort }>> {
+  const headers = {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+    "Consumer-Key": MAERSK_CONSUMER_KEY,
+    "api-version": "1",
+  };
+  const portsResponse = await apiRequest.get(
+    `${MAERSK_API_ORIGIN}/synergy/schedules/active-ports?carrierCodes=MAEU`,
+    { headers },
+  );
+  if (!portsResponse.ok()) throw new Error(`Maersk active ports request failed with status ${portsResponse.status()}.`);
+  const portsPayload = (await portsResponse.json()) as { ports?: MaerskPort[] };
+  const destinations = (portsPayload.ports ?? []).filter((port) => port.portCode);
+  const { earliestTime, latestTime } = maerskDateWindow(latestDeparture);
+  const pending = [...destinations];
+  const successful: Array<{ payload: unknown; destination: MaerskPort }> = [];
+  const worker = async () => {
+    while (pending.length) {
+      const destination = pending.pop();
+      if (!destination?.portCode) continue;
+      try {
+        const response = await apiRequest.post(`${MAERSK_API_ORIGIN}/routing-unified/routing/routings-queries`, {
+          headers,
+          data: {
+            requestType: "DATED_SCHEDULES",
+            includeFutureSchedules: true,
+            routingCondition: "PREFERRED",
+            exportServiceType: "CY",
+            importServiceType: "CY",
+            brandCode: "MSL",
+            startLocation: {
+              dataObject: "CITY",
+              alternativeCodes: [{ alternativeCodeType: "GEO_ID", alternativeCode: MAERSK_PORT_LOUIS_GEO_ID }],
+              cityCode: "",
+            },
+            endLocation: {
+              dataObject: "CITY",
+              alternativeCodes: [{ alternativeCodeType: "GEO_ID", alternativeCode: destination.portCode }],
+              cityCode: "",
+            },
+            timeRange: { routingsBasedOn: "DEPARTURE_DATE", earliestTime, latestTime },
+            cargo: { cargoType: "DRY", isTemperatureControlRequired: false },
+            carriage: { vessel: { flagCountryCode: "" } },
+            equipment: {
+              equipmentSizeCode: "40",
+              equipmentTypeCode: "HDRY",
+              constructionMaterial: "",
+              isEmpty: false,
+              isShipperOwned: false,
+            },
+            IsUseOfInternetMarkedRoutesOnly: false,
+          },
+        });
+        if (!response.ok()) continue;
+        const payload = (await response.json()) as { routings?: unknown[] };
+        if (Array.isArray(payload.routings) && payload.routings.length) successful.push({ payload, destination });
+      } catch {
+        // One unavailable destination should not discard the other Maersk routes.
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: 16 }, () => worker()));
+  return successful;
+}
+
+export async function refreshMaerskSchedules(latestDeparture: string): Promise<NormalizedSchedule[]> {
+  logger.info({ latestDeparture }, "Starting Maersk schedule refresh");
+  const browser = await chromium.launch({
+    headless: true,
+    executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ?? "/repl/tools/bin/chromium",
+    args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-blink-features=AutomationControlled"],
+  });
+  const page = await browser.newPage({ locale: "en-US" });
+  const apiRequest = await request.newContext({ timeout: 120_000 });
+
+  try {
+    await page.goto(MAERSK_SCHEDULE_URL, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    const captured = await fetchMaerskPayloads(apiRequest, latestDeparture);
+    const schedules = parseMaerskRoutes(captured);
+    if (!schedules.length) throw new Error("Maersk returned no recognizable Port Louis schedules.");
+    logger.info({ count: schedules.length, latestDeparture }, "Maersk schedule refresh completed");
+    return schedules;
+  } finally {
+    await apiRequest.dispose();
+    await browser.close();
+  }
 }

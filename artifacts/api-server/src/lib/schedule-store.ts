@@ -3,6 +3,8 @@ import path from "node:path";
 
 export type NormalizedSchedule = {
   id: string;
+  carrier: string;
+  bookingUrl: string;
   origin: string;
   originCountry: string | null;
   destination: string;
@@ -20,6 +22,13 @@ export type ScheduleCache = {
   lastUpdated: string | null;
   source: string;
 };
+
+export function mergeSchedules(
+  mscSchedules: NormalizedSchedule[],
+  maerskSchedules: NormalizedSchedule[],
+): NormalizedSchedule[] {
+  return [...new Map([...mscSchedules, ...maerskSchedules].map((schedule) => [schedule.id, schedule])).values()];
+}
 
 const cachePath = path.resolve(
   process.env.SCHEDULE_CACHE_PATH ?? path.join(process.cwd(), "data", "msc-schedules.json"),
@@ -39,6 +48,11 @@ export async function readScheduleCache(): Promise<ScheduleCache> {
       schedules: Array.isArray(parsed.schedules)
         ? parsed.schedules.map((schedule) => ({
             ...schedule,
+            carrier: typeof schedule.carrier === "string" ? schedule.carrier : "MSC",
+            bookingUrl:
+              typeof schedule.bookingUrl === "string"
+                ? schedule.bookingUrl
+                : "https://www.msc.com/en/lp/book-with-mymsc",
             originCountry: typeof schedule.originCountry === "string" ? schedule.originCountry : null,
             destinationCountry: typeof schedule.destinationCountry === "string" ? schedule.destinationCountry : null,
           }))
