@@ -208,10 +208,10 @@ test("departureFrom includes the boundary date and excludes earlier sailings", a
     count: number;
     schedules: Array<{ id: string; departureDate: string | null }>;
   };
-  assert.equal(body.count, 2);
+  assert.equal(body.count, 3);
   assert.deepEqual(
     body.schedules.map((schedule) => schedule.id),
-    ["us-2", "uk-1"],
+    ["us-2", "uk-1", "maersk-1"],
   );
   assert.ok(!body.schedules.some((schedule) => schedule.id === "undated-1"));
   assert.ok(body.schedules.every((schedule) => schedule.departureDate >= "2026-10-03"));
