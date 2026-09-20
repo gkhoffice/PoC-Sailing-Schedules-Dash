@@ -6,7 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export * from './carrierQueryParameter';
 export * from './departureFromQueryParameter';
 export * from './departureToQueryParameter';
 export * from './destinationQueryParameter';

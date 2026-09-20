@@ -28,7 +28,6 @@ import {
 
 type Filters = {
   destinations?: string[];
-  carriers?: string[];
   departureFrom?: string;
   departureTo?: string;
 };
@@ -44,15 +43,10 @@ const filtersFromSearch = (search: string): Filters => {
     .split(',')
     .map((destination) => destination.trim())
     .filter(Boolean);
-  const carriers = (query.get('carrier') ?? '')
-    .split(',')
-    .map((carrier) => carrier.trim())
-    .filter(Boolean);
   const departureFrom = query.get('departureFrom') || undefined;
   const departureTo = query.get('departureTo') || undefined;
   return {
     ...(destinations.length ? { destinations } : {}),
-    ...(carriers.length ? { carriers } : {}),
     ...(departureFrom ? { departureFrom } : {}),
     ...(departureTo ? { departureTo } : {}),
   };
@@ -61,7 +55,6 @@ const filtersFromSearch = (search: string): Filters => {
 const manifestUrl = (filters: Filters) => {
   const query = new URLSearchParams();
   if (filters.destinations?.length) query.set('destination', filters.destinations.join(','));
-  if (filters.carriers?.length) query.set('carrier', filters.carriers.join(','));
   if (filters.departureFrom) query.set('departureFrom', filters.departureFrom);
   if (filters.departureTo) query.set('departureTo', filters.departureTo);
   const encoded = query.toString();
@@ -90,6 +83,7 @@ const formatUpdated = (value: string | null | undefined) => {
 };
 
 const formatCount = (value: number | undefined) => new Intl.NumberFormat('en-US').format(value ?? 0);
+const MSC_BOOKING_URL = 'https://www.msc.com/en/lp/book-with-mymsc';
 
 function MetricCard({
   label,
@@ -152,7 +146,6 @@ function Dashboard() {
 
   const params = useMemo(() => ({
     ...(filters.destinations?.length ? { destination: filters.destinations.join(',') } : {}),
-    ...(filters.carriers?.length ? { carrier: filters.carriers.join(',') } : {}),
     ...(filters.departureFrom ? { departureFrom: filters.departureFrom } : {}),
     ...(filters.departureTo ? { departureTo: filters.departureTo } : {}),
   }), [filters]);
@@ -177,11 +170,6 @@ function Dashboard() {
     }
     return [...options.values()].sort((left, right) => left.value.localeCompare(right.value));
   }, [filterOptionsQuery.data?.schedules]);
-  const carrierOptions = useMemo(
-    () => [...new Set((filterOptionsQuery.data?.schedules ?? []).map((schedule) => schedule.carrier).filter(Boolean))]
-      .sort((left, right) => left.localeCompare(right)),
-    [filterOptionsQuery.data?.schedules],
-  );
   const destinationSuggestions = useMemo(() => {
     const query = destinationInput.trim().toLowerCase();
     if (!query) return [];
@@ -199,7 +187,6 @@ function Dashboard() {
     .sort()[0] ?? null;
   const activeFilterCount = [
     Boolean(filters.destinations?.length),
-    Boolean(filters.carriers?.length),
     Boolean(filters.departureFrom),
     Boolean(filters.departureTo),
   ].filter(Boolean).length;
@@ -240,14 +227,6 @@ function Dashboard() {
     });
   };
 
-  const toggleCarrier = (carrier: string, checked: boolean) => {
-    const selected = new Set(draft.carriers ?? []);
-    if (checked) selected.add(carrier);
-    else selected.delete(carrier);
-    const carriers = [...selected];
-    setDraft({ ...draft, ...(carriers.length ? { carriers } : { carriers: undefined }) });
-  };
-
   const refresh = () => {
     setRefreshMessage('');
     refreshMutation.mutate(undefined, {
@@ -281,14 +260,14 @@ function Dashboard() {
               <Anchor className="h-4 w-4 text-sidebar-primary" />
               Current sailings
             </div>
-            <p className="mt-2 pl-7 text-xs font-normal leading-relaxed text-sidebar-foreground/55">MSC and Maersk departures from Mauritius</p>
+            <p className="mt-2 pl-7 text-xs font-normal leading-relaxed text-sidebar-foreground/55">MSC departures from Mauritius</p>
           </div>
         </div>
         <div className="border-t border-sidebar-border/70 px-7 py-6">
           <p className="eyebrow text-sidebar-foreground/40">Data source</p>
           <div className="mt-3 flex items-center gap-2 text-xs text-sidebar-foreground/75">
             <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            MSC + Maersk schedule interfaces
+            MSC schedule interface
           </div>
           <p data-testid="text-sidebar-origin" className="mt-2 text-xs text-sidebar-foreground/45">Origin locked to Port Louis, MU</p>
         </div>
@@ -344,7 +323,7 @@ function Dashboard() {
                 <div>
                   <p className="eyebrow text-muted-foreground">Departure manifest</p>
                   <div className="mt-1 flex flex-wrap items-center gap-3">
-                    <h2 className="text-xl font-bold tracking-[-0.03em]">Carrier sailings</h2>
+                    <h2 className="text-xl font-bold tracking-[-0.03em]">MSC sailings</h2>
                     <span data-testid="text-schedule-count" className="rounded-full bg-secondary px-2.5 py-1 font-mono text-[0.68rem] text-secondary-foreground">{formatCount(schedules.length)} shown</span>
                   </div>
                 </div>
@@ -364,35 +343,7 @@ function Dashboard() {
             )}
 
             {!isManifestPage && (
-              <form data-testid="form-schedule-filters" onSubmit={submitFilters} className="mb-5 grid gap-3 rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 md:grid-cols-[1.3fr_1fr_1fr_1fr_auto] md:items-start">
-                <fieldset className="block">
-                  <legend className="eyebrow text-muted-foreground">Carriers</legend>
-                  <div className="mt-2 flex min-h-10 flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-input bg-card px-3 py-2">
-                    <label className="inline-flex items-center gap-2 text-sm font-semibold">
-                      <input
-                        data-testid="checkbox-carrier-all"
-                        type="checkbox"
-                        checked={!draft.carriers?.length}
-                        onChange={() => setDraft({ ...draft, carriers: undefined })}
-                        className="h-4 w-4 accent-primary"
-                      />
-                      All carriers
-                    </label>
-                    {carrierOptions.map((carrier) => (
-                      <label key={carrier} className="inline-flex items-center gap-2 text-sm">
-                        <input
-                          data-testid={`checkbox-carrier-${carrier}`}
-                          type="checkbox"
-                          checked={draft.carriers?.includes(carrier) ?? false}
-                          onChange={(event) => toggleCarrier(carrier, event.target.checked)}
-                          className="h-4 w-4 accent-primary"
-                        />
-                        {carrier}
-                      </label>
-                    ))}
-                  </div>
-                  <p className="mt-1 text-[0.68rem] text-muted-foreground">Choose one or more carriers, or leave all selected.</p>
-                </fieldset>
+              <form data-testid="form-schedule-filters" onSubmit={submitFilters} className="mb-5 grid gap-3 rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 md:grid-cols-[1.3fr_1fr_1fr_auto] md:items-start">
                 <label className="block">
                   <span className="eyebrow text-muted-foreground">Ports or countries</span>
                   <div className="relative mt-2">
@@ -472,7 +423,7 @@ function Dashboard() {
               <div data-testid="manifest-link-card" className="flex flex-col justify-between gap-4 rounded-2xl border border-border/80 bg-card p-5 shadow-[0_12px_30px_hsl(202_50%_17%/0.04)] sm:flex-row sm:items-center">
                 <div>
                   <p className="eyebrow text-muted-foreground">Departure manifest</p>
-                  <h3 className="mt-1 font-bold">Open the full sailing board</h3>
+                  <h3 className="mt-1 font-bold">Open the full MSC sailing board</h3>
                   <p className="mt-1 text-sm text-muted-foreground">Review vessels, voyages, dates, transit times, and booking links for the selected search.</p>
                 </div>
                 <button data-testid="button-open-manifest" type="button" onClick={() => setLocation(manifestUrl(draft))} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-sidebar px-4 py-2.5 text-sm font-bold text-sidebar-foreground transition-colors hover:bg-sidebar/90">
@@ -504,7 +455,7 @@ function Dashboard() {
                         </p>
                         </div>
                       <p className="mt-1 text-xs text-muted-foreground">
-                         {schedule.service || `${schedule.carrier} service`} <span className="mx-1 text-border">/</span> from {schedule.origin}
+                        {schedule.service || 'MSC service'} <span className="mx-1 text-border">/</span> from {schedule.origin}
                         {schedule.originCountry && <span>, {schedule.originCountry}</span>}
                       </p>
                       </div>
@@ -515,8 +466,8 @@ function Dashboard() {
                       <div><p className="text-[0.62rem] uppercase tracking-wider text-muted-foreground md:hidden">Departure</p><p data-testid={`text-departure-${schedule.id}`} className="mt-1 font-mono text-sm font-medium md:mt-0">{formatDate(schedule.departureDate)}</p></div>
                       <div><p className="text-[0.62rem] uppercase tracking-wider text-muted-foreground md:hidden">Arrival</p><p data-testid={`text-arrival-${schedule.id}`} className="mt-1 font-mono text-sm font-medium md:mt-0">{formatDate(schedule.arrivalDate)}</p></div>
                       <div className="flex items-center justify-between md:block"><div><p className="text-[0.62rem] uppercase tracking-wider text-muted-foreground md:hidden">Transit</p><p data-testid={`text-transit-${schedule.id}`} className="mt-1 font-mono text-sm font-medium md:mt-0">{schedule.transitTime || '—'}</p></div><Database className="h-4 w-4 text-muted-foreground/35 md:hidden" /></div>
-                      <a data-testid={`button-book-${schedule.id}`} href={schedule.bookingUrl} target="_blank" rel="noreferrer" aria-label={`Book ${schedule.destination} sailing with ${schedule.carrier}`} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-primary/[0.06] px-3 py-2 text-xs font-bold text-primary transition-colors hover:border-primary/50 hover:bg-primary/12 md:justify-self-end">
-                        Book with {schedule.carrier}
+                      <a data-testid={`button-book-${schedule.id}`} href={MSC_BOOKING_URL} target="_blank" rel="noreferrer" aria-label={`Book ${schedule.destination} sailing with MSC`} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-primary/[0.06] px-3 py-2 text-xs font-bold text-primary transition-colors hover:border-primary/50 hover:bg-primary/12 md:justify-self-end">
+                        Book with MSC
                         <ExternalLink className="h-3.5 w-3.5" />
                       </a>
                     </article>
@@ -528,7 +479,7 @@ function Dashboard() {
 
           <footer className="mt-7 flex flex-col gap-2 border-t border-border/60 pt-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <span data-testid="text-last-updated">Last captured {formatUpdated(schedulesQuery.data?.lastUpdated ?? summaryQuery.data?.lastUpdated)}</span>
-            <span data-testid="text-source" className="inline-flex items-center gap-1.5"><Database className="h-3.5 w-3.5" /> Source: {schedulesQuery.data?.source || 'MSC + Maersk schedule interfaces'}</span>
+            <span data-testid="text-source" className="inline-flex items-center gap-1.5"><Database className="h-3.5 w-3.5" /> Source: {schedulesQuery.data?.source || 'MSC schedule interface'}</span>
           </footer>
         </div>
       </main>

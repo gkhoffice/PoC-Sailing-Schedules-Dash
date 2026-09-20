@@ -5,8 +5,8 @@ import {
   GetScheduleSummaryResponse,
   RefreshSchedulesResponse,
 } from "@workspace/api-zod";
-import { isCacheStale, mergeSchedules, readScheduleCache, writeScheduleCache } from "../lib/schedule-store";
-import { latestDepartureDate, refreshMaerskSchedules, refreshMscSchedules } from "../lib/msc-scraper";
+import { isCacheStale, readScheduleCache, writeScheduleCache } from "../lib/schedule-store";
+import { refreshMscSchedules } from "../lib/msc-scraper";
 
 const router: IRouter = Router();
 let refreshInFlight: Promise<Awaited<ReturnType<typeof refreshMscSchedules>>> | null = null;
@@ -52,14 +52,7 @@ const buildResponse = async (query: Record<string, unknown>) => {
     .split(",")
     .map((term) => term.trim().toLowerCase())
     .filter(Boolean);
-  const carrierTerms = (parsed.data.carrier ?? "")
-    .split(",")
-    .map((term) => term.trim().toLowerCase())
-    .filter(Boolean);
   const schedules = cache.schedules.filter((schedule) => {
-    const matchesCarrier =
-      carrierTerms.length === 0 || carrierTerms.some((term) => schedule.carrier.toLowerCase() === term);
-    if (!matchesCarrier) return false;
     const matchesDestination =
       destinationTerms.length === 0 ||
       destinationTerms.some(
@@ -128,24 +121,7 @@ router.get("/schedules/summary", async (req, res): Promise<void> => {
 router.post("/schedules/refresh", async (req, res): Promise<void> => {
   try {
     if (!refreshInFlight) {
-      refreshInFlight = (async () => {
-        const existing = await readScheduleCache();
-        const latestCachedDate = latestDepartureDate(existing.schedules) ?? new Date().toISOString().slice(0, 10);
-        const [mscResult, maerskResult] = await Promise.allSettled([
-          refreshMscSchedules(),
-          refreshMaerskSchedules(latestCachedDate),
-        ]);
-        const mscSchedules = mscResult.status === "fulfilled" ? mscResult.value : existing.schedules.filter((s) => s.carrier === "MSC");
-        const maerskSchedules =
-          maerskResult.status === "fulfilled"
-            ? maerskResult.value
-            : existing.schedules.filter((s) => s.carrier === "Maersk");
-        if (mscResult.status === "rejected") req.log.warn({ err: mscResult.reason }, "MSC schedule refresh failed; retaining cached MSC schedules");
-        if (maerskResult.status === "rejected") req.log.warn({ err: maerskResult.reason }, "Maersk schedule refresh failed; retaining cached Maersk schedules");
-        const merged = mergeSchedules(mscSchedules, maerskSchedules);
-        if (!merged.length) throw new Error("No schedule source returned usable data.");
-        return merged;
-      })().finally(() => {
+      refreshInFlight = refreshMscSchedules().finally(() => {
         refreshInFlight = null;
       });
     }
@@ -153,7 +129,7 @@ router.post("/schedules/refresh", async (req, res): Promise<void> => {
     const cache = {
       schedules,
       lastUpdated: new Date().toISOString(),
-      source: "MSC + Maersk schedule interfaces",
+      source: "MSC Search a Schedule",
     };
     await writeScheduleCache(cache);
     res.json(RefreshSchedulesResponse.parse({ ...cache, isStale: false, count: schedules.length }));

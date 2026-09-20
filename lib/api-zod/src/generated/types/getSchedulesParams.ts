@@ -5,7 +5,6 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { CarrierQueryParameter } from './carrierQueryParameter';
 import type { DepartureFromQueryParameter } from './departureFromQueryParameter';
 import type { DepartureToQueryParameter } from './departureToQueryParameter';
 import type { DestinationQueryParameter } from './destinationQueryParameter';
@@ -16,15 +15,11 @@ export type GetSchedulesParams = {
  */
 destination?: DestinationQueryParameter;
 /**
- * Case-insensitive carrier filter; select one or more carriers by separating values with commas
- */
-carrier?: CarrierQueryParameter;
-/**
- * Earliest departure date, inclusive. Must use YYYY-MM-DD and be on or before departureTo.
+ * Earliest departure date, inclusive
  */
 departureFrom?: DepartureFromQueryParameter;
 /**
- * Latest departure date, inclusive. Must use YYYY-MM-DD and be on or after departureFrom.
+ * Latest departure date, inclusive
  */
 departureTo?: DepartureToQueryParameter;
 };
