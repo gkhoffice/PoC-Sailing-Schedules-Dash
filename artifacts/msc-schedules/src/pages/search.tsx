@@ -257,7 +257,7 @@ function SearchPage() {
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Search MSC and Maersk sailings from Port Louis by destination or departure window, then open the full departure manifest.</p>
             </div>
 
-            <form data-testid="form-schedule-search" onSubmit={submitSearch} className="mt-7 grid gap-4 rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 md:grid-cols-[1.3fr_1fr_1fr_auto] md:items-end md:p-5">
+            <form data-testid="form-schedule-search" onSubmit={submitSearch} className="mt-7 grid gap-4 rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 md:grid-cols-[1.3fr_1fr_1fr_auto] md:items-start md:p-5">
               <label className="relative block">
                 <span className="eyebrow text-muted-foreground">Ports or countries</span>
                 <div className="mt-2 flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border border-input bg-card px-2 py-1.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
@@ -308,7 +308,7 @@ function SearchPage() {
                 <span className="eyebrow text-muted-foreground">Departing to</span>
                 <input data-testid="input-departure-to" type="date" value={draft.departureTo ?? ''} onChange={(event) => setDraft({ ...draft, departureTo: event.target.value })} className="mt-2 h-10 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15" />
               </label>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 md:pt-5">
                 <button data-testid="button-clear-search" type="button" onClick={clearSearch} className="h-10 rounded-lg border border-border bg-card px-3 text-sm font-semibold text-muted-foreground transition-colors hover:bg-secondary">Clear</button>
                 <button data-testid="button-search-schedules" type="submit" className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-sidebar px-4 text-sm font-bold text-sidebar-foreground transition-colors hover:bg-sidebar/90">
                   <Search className="h-4 w-4" /> Search
