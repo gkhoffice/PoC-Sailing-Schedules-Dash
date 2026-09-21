@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import Dashboard from '@/pages/dashboard';
+import SearchPage from '@/pages/search';
 import {
   Route,
   Switch,
@@ -20,7 +21,8 @@ function Router() {
     // survives a page crash.
     <RoutedErrorBoundary>
       <Switch>
-         <Route path="/" component={Dashboard} />
+         <Route path="/" component={SearchPage} />
+         <Route path="/manifest" component={Dashboard} />
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>

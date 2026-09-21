@@ -14,7 +14,6 @@ import {
   RefreshCw,
   Search,
   ShipWheel,
-  SlidersHorizontal,
   Waves,
   X,
 } from 'lucide-react';
@@ -25,6 +24,7 @@ import {
   useGetSchedules,
   useRefreshSchedules,
 } from '@workspace/api-client-react';
+import { Link } from 'wouter';
 
 type Filters = {
   destinations?: string[];
@@ -214,13 +214,17 @@ function Dashboard() {
         </div>
         <div className="flex-1 px-4 py-7">
           <p className="eyebrow px-3 text-sidebar-foreground/40">Operations</p>
-          <div className="mt-3 rounded-xl border border-sidebar-primary/30 bg-sidebar-primary/10 px-3 py-3 text-sm font-semibold text-sidebar-primary-foreground">
+          <Link href="/" className="mt-3 flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-sidebar-foreground/70 transition-colors hover:bg-sidebar-primary/10 hover:text-sidebar-primary-foreground">
+            <Search className="h-4 w-4 text-sidebar-primary" />
+            Search schedules
+          </Link>
+          <Link href="/manifest" className="mt-1 block rounded-xl border border-sidebar-primary/30 bg-sidebar-primary/10 px-3 py-3 text-sm font-semibold text-sidebar-primary-foreground">
             <div className="flex items-center gap-3">
               <Anchor className="h-4 w-4 text-sidebar-primary" />
-              Current sailings
+              Departure manifest
             </div>
            <p className="mt-2 pl-7 text-xs font-normal leading-relaxed text-sidebar-foreground/55">MSC and Maersk departures from Mauritius</p>
-          </div>
+          </Link>
         </div>
         <div className="border-t border-sidebar-border/70 px-7 py-6">
           <p className="eyebrow text-sidebar-foreground/40">Data source</p>
@@ -288,7 +292,7 @@ function Dashboard() {
               <div className="flex items-center gap-2">
                 {hasFilters && <button data-testid="button-clear-filters" type="button" onClick={clearFilters} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"><X className="h-3.5 w-3.5" /> Clear filters</button>}
                 <button data-testid="button-toggle-filters" type="button" onClick={() => setShowFilters(!showFilters)} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${showFilters || hasFilters ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border bg-card text-foreground hover:bg-secondary'}`}>
-                  <SlidersHorizontal className="h-4 w-4" /> Filters <span className="font-mono text-xs">{hasFilters ? String(activeFilterCount).padStart(2, '0') : ''}</span>
+                  <Search className="h-4 w-4" /> Search <span className="font-mono text-xs">{hasFilters ? String(activeFilterCount).padStart(2, '0') : ''}</span>
                 </button>
               </div>
             </div>
@@ -352,7 +356,7 @@ function Dashboard() {
                   <span className="eyebrow text-muted-foreground">Departing to</span>
                   <input data-testid="input-departure-to" type="date" value={draft.departureTo ?? ''} onChange={(event) => setDraft({ ...draft, departureTo: event.target.value })} className="mt-2 h-10 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15" />
                 </label>
-                <button data-testid="button-apply-filters" type="submit" className="h-10 rounded-lg bg-sidebar px-4 text-sm font-bold text-sidebar-foreground transition-colors hover:bg-sidebar/90">Apply</button>
+                 <button data-testid="button-search-schedules" type="submit" className="h-10 rounded-lg bg-sidebar px-4 text-sm font-bold text-sidebar-foreground transition-colors hover:bg-sidebar/90">Search</button>
               </form>
             )}
 
