@@ -10,6 +10,9 @@ import {
   Container,
   Database,
   ExternalLink,
+  FileDown,
+  FileSpreadsheet,
+  FileText,
   Filter,
   RefreshCw,
   Search,
@@ -25,6 +28,11 @@ import {
   useRefreshSchedules,
 } from '@workspace/api-client-react';
 import { Link, useLocation } from 'wouter';
+import {
+  exportSchedulesToCsv,
+  exportSchedulesToPdf,
+  exportSchedulesToXlsx,
+} from '@/lib/export-schedules';
 
 type Filters = {
   destinations?: string[];
@@ -228,6 +236,12 @@ function Dashboard() {
     });
   };
 
+  const exportOptions = {
+    rows: schedules,
+    formatDate,
+    filters,
+  };
+
   return (
     <div className="desk-shell min-h-[100dvh] text-foreground">
       <aside className="nav-grid fixed inset-y-0 left-0 z-20 hidden w-[250px] flex-col bg-sidebar text-sidebar-foreground md:flex">
@@ -319,7 +333,38 @@ function Dashboard() {
                   <span data-testid="text-schedule-count" className="rounded-full bg-secondary px-2.5 py-1 font-mono text-[0.68rem] text-secondary-foreground">{formatCount(schedules.length)} shown</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <span className="eyebrow mr-1 hidden text-muted-foreground lg:inline">Export</span>
+                <button
+                  data-testid="button-export-pdf"
+                  type="button"
+                  onClick={() => exportSchedulesToPdf(exportOptions)}
+                  disabled={!schedules.length}
+                  title="Export visible departures as PDF"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  <FileText className="h-3.5 w-3.5 text-destructive" /> PDF
+                </button>
+                <button
+                  data-testid="button-export-csv"
+                  type="button"
+                  onClick={() => exportSchedulesToCsv(exportOptions)}
+                  disabled={!schedules.length}
+                  title="Export visible departures as CSV"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  <FileDown className="h-3.5 w-3.5 text-emerald-700" /> CSV
+                </button>
+                <button
+                  data-testid="button-export-xlsx"
+                  type="button"
+                  onClick={() => exportSchedulesToXlsx(exportOptions)}
+                  disabled={!schedules.length}
+                  title="Export visible departures as XLSX"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  <FileSpreadsheet className="h-3.5 w-3.5 text-primary" /> XLSX
+                </button>
                 {hasFilters && <button data-testid="button-clear-filters" type="button" onClick={clearFilters} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"><X className="h-3.5 w-3.5" /> Clear filters</button>}
                 <button data-testid="button-toggle-filters" type="button" onClick={() => setShowFilters(!showFilters)} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${showFilters || hasFilters ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border bg-card text-foreground hover:bg-secondary'}`}>
                   <Search className="h-4 w-4" /> Search <span className="font-mono text-xs">{hasFilters ? String(activeFilterCount).padStart(2, '0') : ''}</span>
