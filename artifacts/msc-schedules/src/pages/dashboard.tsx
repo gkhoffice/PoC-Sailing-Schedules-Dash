@@ -338,7 +338,7 @@ function Dashboard() {
                 <button
                   data-testid="button-export-pdf"
                   type="button"
-                  onClick={() => exportSchedulesToPdf(exportOptions)}
+                  onClick={() => void exportSchedulesToPdf(exportOptions)}
                   disabled={!schedules.length}
                   title="Export visible departures as PDF"
                   className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-45"
@@ -358,7 +358,7 @@ function Dashboard() {
                 <button
                   data-testid="button-export-xlsx"
                   type="button"
-                  onClick={() => exportSchedulesToXlsx(exportOptions)}
+                  onClick={() => void exportSchedulesToXlsx(exportOptions)}
                   disabled={!schedules.length}
                   title="Export visible departures as XLSX"
                   className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-45"

@@ -1,6 +1,3 @@
-import { jsPDF } from 'jspdf';
-import * as XLSX from 'xlsx';
-
 export type ScheduleExportRow = {
   carrier: string;
   origin: string;
@@ -93,7 +90,8 @@ export function exportSchedulesToCsv(options: ScheduleExportOptions) {
   downloadBlob(`\uFEFF${csv}`, 'text/csv;charset=utf-8', `departure-manifest-${filenameDate()}.csv`);
 }
 
-export function exportSchedulesToXlsx(options: ScheduleExportOptions) {
+export async function exportSchedulesToXlsx(options: ScheduleExportOptions) {
+  const XLSX = await import('xlsx');
   const workbook = XLSX.utils.book_new();
   const worksheet = XLSX.utils.json_to_sheet(getExportRows(options), { header: [...columns] });
   worksheet['!cols'] = [
@@ -116,7 +114,8 @@ export function exportSchedulesToXlsx(options: ScheduleExportOptions) {
 const truncate = (value: string, length: number) =>
   value.length > length ? `${value.slice(0, length - 1)}…` : value;
 
-export function exportSchedulesToPdf(options: ScheduleExportOptions) {
+export async function exportSchedulesToPdf(options: ScheduleExportOptions) {
+  const { jsPDF } = await import('jspdf');
   const rows = getExportRows(options);
   const document = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const pageWidth = document.internal.pageSize.getWidth();
