@@ -83,6 +83,38 @@ test("Maersk routes normalize carrier identity and source link", () => {
   assert.equal(schedules[0].arrivalDate, "2026-10-11");
 });
 
+test("Maersk Singapore routing keeps the 30 October departure", () => {
+  const schedules = parseMaerskRoutes([
+    {
+      destination: { cityName: "Singapore", countryName: "Singapore", portCode: "0XOP5ISJZK0HR" },
+      payload: {
+        routings: [
+          {
+            estimatedTransitTime: "P6DT23H22M",
+            routingLegs: [
+              {
+                carriage: {
+                  vessel: { vesselName: "MAERSK STOCKHOLM" },
+                  vesselPortCallStart: {
+                    departureVoyageNumber: "641N",
+                    estimatedTimeOfDeparture: "2026-10-30T08:00:00",
+                  },
+                  vesselPortCallEnd: { estimatedTimeOfArrival: "2026-11-06T11:22:00" },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    },
+  ]);
+
+  assert.equal(schedules.length, 1);
+  assert.equal(schedules[0].destination, "Singapore");
+  assert.equal(schedules[0].departureDate, "2026-10-30");
+  assert.equal(schedules[0].vessel, "MAERSK STOCKHOLM");
+});
+
 test("merging sources removes duplicate rows without collapsing carrier identity", () => {
   const maerskSchedule = {
     ...mscSchedule,

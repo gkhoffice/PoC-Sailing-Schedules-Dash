@@ -7,4 +7,4 @@ Maersk’s routing endpoint requires one destination per request even when the u
 
 **Why:** The live API rejects a blank EndLocation and rejects ranges longer than eight weeks. Current routes can include transshipment legs, and taking arrival from the first leg reports an intermediate port instead of the requested destination.
 
-**How to apply:** Fetch active Maersk ports, issue bounded concurrent CY-to-CY routing requests from the Port Louis GEO ID, normalize the first departure and final arrival, and retain Maersk carrier/source identity in the shared schedule model.
+**How to apply:** Open the Maersk schedule page first and issue the API calls through its browser context; use bounded concurrency with retries because the API intermittently returns anti-automation 403s under a large fan-out. Fetch active Maersk ports, issue CY-to-CY routing requests from the Port Louis GEO ID, normalize the first departure and final arrival, and retain Maersk carrier/source identity in the shared schedule model.

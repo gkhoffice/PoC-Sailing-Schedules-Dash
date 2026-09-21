@@ -1,4 +1,4 @@
-import { chromium, request, type APIRequestContext, type Page } from "playwright";
+import { chromium, type APIRequestContext, type Page } from "playwright";
 import { createHash } from "node:crypto";
 import type { NormalizedSchedule } from "./schedule-store";
 import { logger } from "./logger";
@@ -594,6 +594,9 @@ async function fetchMaerskPayloads(
     "Content-Type": "application/json",
     "Consumer-Key": MAERSK_CONSUMER_KEY,
     "api-version": "1",
+    "Accept-Language": "en-US,en;q=0.9",
+    Origin: "https://www.maersk.com",
+    Referer: MAERSK_SCHEDULE_URL,
   };
   const portsResponse = await apiRequest.get(
     `${MAERSK_API_ORIGIN}/synergy/schedules/active-ports?carrierCodes=MAEU`,
@@ -613,23 +616,28 @@ async function fetchMaerskPayloads(
     while (pending.length > 0) {
       const destination = pending.pop();
       if (!destination?.portCode) continue;
-      try {
-        const response = await apiRequest.post(`${MAERSK_API_ORIGIN}/routing-unified/routing/routings-queries`, {
-          headers,
-          data: buildMaerskRoutingRequest(fromDate, destination),
-        });
-        if (!response.ok()) continue;
-        const payload = (await response.json()) as { routings?: unknown[] };
-        if (Array.isArray(payload.routings) && payload.routings.length > 0) {
-          successful.push({ payload, destination });
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          const response = await apiRequest.post(`${MAERSK_API_ORIGIN}/routing-unified/routing/routings-queries`, {
+            headers,
+            data: buildMaerskRoutingRequest(fromDate, destination),
+          });
+          if (response.ok()) {
+            const payload = (await response.json()) as { routings?: unknown[] };
+            if (Array.isArray(payload.routings) && payload.routings.length > 0) {
+              successful.push({ payload, destination });
+              break;
+            }
+          }
+        } catch {
+          // Retry transient network and anti-automation responses below.
         }
-      } catch {
-        // One unavailable destination should not discard the other Maersk routes.
+        if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
       }
     }
   };
 
-  await Promise.all(Array.from({ length: 16 }, () => worker()));
+  await Promise.all(Array.from({ length: 6 }, () => worker()));
   return successful;
 }
 
@@ -642,18 +650,24 @@ export async function refreshMaerskSchedules(): Promise<NormalizedSchedule[]> {
     executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ?? "/repl/tools/bin/chromium",
     args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-blink-features=AutomationControlled"],
   });
-  const page = await browser.newPage({ locale: "en-US" });
-  const apiRequest = await request.newContext({ timeout: 120_000 });
+  const page = await browser.newPage({
+    locale: "en-US",
+    userAgent:
+      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+    extraHTTPHeaders: {
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+  });
 
   try {
     await page.goto(MAERSK_SCHEDULE_URL, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    const apiRequest = page.context().request;
     const captured = await fetchMaerskPayloads(apiRequest, fromDate);
     const schedules = parseMaerskRoutes(captured);
     if (!schedules.length) throw new Error("Maersk returned no recognizable Port Louis schedules.");
     logger.info({ count: schedules.length }, "Maersk schedule refresh completed");
     return schedules;
   } finally {
-    await apiRequest.dispose();
     await browser.close();
   }
 }
