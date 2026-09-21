@@ -18,7 +18,7 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
- * Returns the latest successfully cached MSC schedules originating from Port Louis, Mauritius.
+ * Returns the latest successfully cached MSC and Maersk schedules originating from Port Louis, Mauritius.
  * @summary Get cached MSC sailing schedules
  */
 export const GetSchedulesQueryParams = zod.object({
@@ -30,6 +30,8 @@ export const GetSchedulesQueryParams = zod.object({
 export const GetSchedulesResponse = zod.object({
   "schedules": zod.array(zod.object({
   "id": zod.string(),
+  "carrier": zod.string(),
+  "bookingUrl": zod.string().url(),
   "origin": zod.string(),
   "originCountry": zod.string().nullable(),
   "destination": zod.string(),
@@ -62,12 +64,14 @@ export const GetScheduleSummaryResponse = zod.object({
 
 
 /**
- * Opens the MSC schedule interface with Playwright, captures the schedule response, normalizes it, and updates the local JSON cache.
+ * Opens the MSC and Maersk schedule interfaces with Playwright, captures schedule responses, normalizes them, and updates the local JSON cache.
  * @summary Refresh MSC sailing schedules
  */
 export const RefreshSchedulesResponse = zod.object({
   "schedules": zod.array(zod.object({
   "id": zod.string(),
+  "carrier": zod.string(),
+  "bookingUrl": zod.string().url(),
   "origin": zod.string(),
   "originCountry": zod.string().nullable(),
   "destination": zod.string(),

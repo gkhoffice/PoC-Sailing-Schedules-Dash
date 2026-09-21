@@ -3,6 +3,8 @@ import path from "node:path";
 
 export type NormalizedSchedule = {
   id: string;
+  carrier: string;
+  bookingUrl: string;
   origin: string;
   originCountry: string | null;
   destination: string;
@@ -28,7 +30,7 @@ const cachePath = path.resolve(
 const emptyCache = (): ScheduleCache => ({
   schedules: [],
   lastUpdated: null,
-  source: "MSC Search a Schedule",
+  source: "MSC + Maersk schedule interfaces",
 });
 
 export async function readScheduleCache(): Promise<ScheduleCache> {
@@ -39,6 +41,11 @@ export async function readScheduleCache(): Promise<ScheduleCache> {
       schedules: Array.isArray(parsed.schedules)
         ? parsed.schedules.map((schedule) => ({
             ...schedule,
+            carrier: typeof schedule.carrier === "string" ? schedule.carrier : "MSC",
+            bookingUrl:
+              typeof schedule.bookingUrl === "string"
+                ? schedule.bookingUrl
+                : "https://www.msc.com/en/lp/book-with-mymsc",
             originCountry: typeof schedule.originCountry === "string" ? schedule.originCountry : null,
             destinationCountry: typeof schedule.destinationCountry === "string" ? schedule.destinationCountry : null,
           }))
@@ -53,6 +60,28 @@ export async function readScheduleCache(): Promise<ScheduleCache> {
     }
     throw error;
   }
+}
+
+export function mergeSchedules(
+  mscSchedules: NormalizedSchedule[],
+  maerskSchedules: NormalizedSchedule[],
+): NormalizedSchedule[] {
+  const unique = new Map<string, NormalizedSchedule>();
+  for (const schedule of [...mscSchedules, ...maerskSchedules]) {
+    unique.set(schedule.id, schedule);
+  }
+  return [...unique.values()];
+}
+
+export function mergeSchedulesWithFallback(
+  mscSchedules: NormalizedSchedule[] | null,
+  maerskSchedules: NormalizedSchedule[] | null,
+  cachedSchedules: NormalizedSchedule[],
+): NormalizedSchedule[] {
+  return mergeSchedules(
+    mscSchedules ?? cachedSchedules.filter((schedule) => schedule.carrier === "MSC"),
+    maerskSchedules ?? cachedSchedules.filter((schedule) => schedule.carrier === "Maersk"),
+  );
 }
 
 export async function writeScheduleCache(cache: ScheduleCache): Promise<void> {

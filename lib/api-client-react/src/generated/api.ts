@@ -148,7 +148,7 @@ export const getGetSchedulesUrl = (params?: GetSchedulesParams,) => {
 }
 
 /**
- * Returns the latest successfully cached MSC schedules originating from Port Louis, Mauritius.
+ * Returns the latest successfully cached MSC and Maersk schedules originating from Port Louis, Mauritius.
  * @summary Get cached MSC sailing schedules
  */
 export const getSchedules = async (params?: GetSchedulesParams, options?: Parameters<typeof customFetch>[1]): Promise<ScheduleResponse> => {
@@ -303,7 +303,7 @@ export const getRefreshSchedulesUrl = () => {
 }
 
 /**
- * Opens the MSC schedule interface with Playwright, captures the schedule response, normalizes it, and updates the local JSON cache.
+ * Opens the MSC and Maersk schedule interfaces with Playwright, captures schedule responses, normalizes them, and updates the local JSON cache.
  * @summary Refresh MSC sailing schedules
  */
 export const refreshSchedules = async ( options?: Parameters<typeof customFetch>[1]): Promise<ScheduleResponse> => {

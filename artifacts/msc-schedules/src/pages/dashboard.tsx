@@ -59,8 +59,6 @@ const formatUpdated = (value: string | null | undefined) => {
 };
 
 const formatCount = (value: number | undefined) => new Intl.NumberFormat('en-US').format(value ?? 0);
-const MSC_BOOKING_URL = 'https://www.msc.com/en/lp/book-with-mymsc';
-
 function MetricCard({
   label,
   value,
@@ -221,14 +219,14 @@ function Dashboard() {
               <Anchor className="h-4 w-4 text-sidebar-primary" />
               Current sailings
             </div>
-            <p className="mt-2 pl-7 text-xs font-normal leading-relaxed text-sidebar-foreground/55">MSC departures from Mauritius</p>
+           <p className="mt-2 pl-7 text-xs font-normal leading-relaxed text-sidebar-foreground/55">MSC and Maersk departures from Mauritius</p>
           </div>
         </div>
         <div className="border-t border-sidebar-border/70 px-7 py-6">
           <p className="eyebrow text-sidebar-foreground/40">Data source</p>
           <div className="mt-3 flex items-center gap-2 text-xs text-sidebar-foreground/75">
             <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            MSC schedule interface
+             MSC + Maersk schedule interfaces
           </div>
           <p data-testid="text-sidebar-origin" className="mt-2 text-xs text-sidebar-foreground/45">Origin locked to Port Louis, MU</p>
         </div>
@@ -283,7 +281,7 @@ function Dashboard() {
               <div>
                 <p className="eyebrow text-muted-foreground">Departure manifest</p>
                 <div className="mt-1 flex flex-wrap items-center gap-3">
-                  <h2 className="text-xl font-bold tracking-[-0.03em]">MSC sailings</h2>
+                   <h2 className="text-xl font-bold tracking-[-0.03em]">MSC + Maersk sailings</h2>
                   <span data-testid="text-schedule-count" className="rounded-full bg-secondary px-2.5 py-1 font-mono text-[0.68rem] text-secondary-foreground">{formatCount(schedules.length)} shown</span>
                 </div>
               </div>
@@ -296,8 +294,8 @@ function Dashboard() {
             </div>
 
             {showFilters && (
-              <form data-testid="form-schedule-filters" onSubmit={submitFilters} className="mb-5 grid gap-3 rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 md:grid-cols-[1.3fr_1fr_1fr_auto] md:items-end">
-                <label className="block">
+               <form data-testid="form-schedule-filters" onSubmit={submitFilters} className="mb-5 grid gap-3 rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 md:grid-cols-[1.3fr_1fr_1fr_auto] md:items-end">
+                <label className="relative block">
                   <span className="eyebrow text-muted-foreground">Ports or countries</span>
                   <div className="mt-2 flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border border-input bg-card px-2 py-1.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
                     <Search className="ml-1 h-4 w-4 shrink-0 text-muted-foreground" />
@@ -323,10 +321,27 @@ function Dashboard() {
                       aria-describedby="destination-filter-help"
                       className="h-7 min-w-[10rem] flex-1 border-0 bg-transparent px-1 text-sm outline-none placeholder:text-muted-foreground/70"
                     />
-                    <button data-testid="button-add-destination" type="button" onClick={addDestination} disabled={!destinationInput.trim()} className="rounded-md bg-sidebar px-2.5 py-1.5 text-xs font-bold text-sidebar-foreground transition-colors hover:bg-sidebar/90 disabled:cursor-not-allowed disabled:opacity-40">
+                    <button data-testid="button-add-destination" type="button" onClick={() => addDestination()} disabled={!destinationInput.trim()} className="rounded-md bg-sidebar px-2.5 py-1.5 text-xs font-bold text-sidebar-foreground transition-colors hover:bg-sidebar/90 disabled:cursor-not-allowed disabled:opacity-40">
                       Add
                     </button>
                   </div>
+                  {showDestinationSuggestions && (
+                    <div data-testid="destination-suggestions" className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-border bg-card p-1 shadow-lg">
+                      {destinationSuggestions.map((option) => (
+                        <button
+                          key={`${option.kind}-${option.value}`}
+                          data-testid={`suggestion-destination-${option.value}`}
+                          type="button"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => addDestination(option.value)}
+                          className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-secondary"
+                        >
+                          <span>{option.value}</span>
+                          <span className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">{option.kind}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <p id="destination-filter-help" className="mt-1 text-[0.68rem] text-muted-foreground">Type a port or country, then click Add. Select × to remove it.</p>
                 </label>
                 <label className="block">
@@ -374,7 +389,7 @@ function Dashboard() {
                         </p>
                         </div>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {schedule.service || 'MSC service'} <span className="mx-1 text-border">/</span> from {schedule.origin}
+                         {schedule.service || `${schedule.carrier} service`} <span className="mx-1 text-border">/</span> from {schedule.origin}
                         {schedule.originCountry && <span>, {schedule.originCountry}</span>}
                       </p>
                       </div>
@@ -385,8 +400,8 @@ function Dashboard() {
                       <div><p className="text-[0.62rem] uppercase tracking-wider text-muted-foreground md:hidden">Departure</p><p data-testid={`text-departure-${schedule.id}`} className="mt-1 font-mono text-sm font-medium md:mt-0">{formatDate(schedule.departureDate)}</p></div>
                       <div><p className="text-[0.62rem] uppercase tracking-wider text-muted-foreground md:hidden">Arrival</p><p data-testid={`text-arrival-${schedule.id}`} className="mt-1 font-mono text-sm font-medium md:mt-0">{formatDate(schedule.arrivalDate)}</p></div>
                       <div className="flex items-center justify-between md:block"><div><p className="text-[0.62rem] uppercase tracking-wider text-muted-foreground md:hidden">Transit</p><p data-testid={`text-transit-${schedule.id}`} className="mt-1 font-mono text-sm font-medium md:mt-0">{schedule.transitTime || '—'}</p></div><Database className="h-4 w-4 text-muted-foreground/35 md:hidden" /></div>
-                      <a data-testid={`button-book-${schedule.id}`} href={MSC_BOOKING_URL} target="_blank" rel="noreferrer" aria-label={`Book ${schedule.destination} sailing with MSC`} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-primary/[0.06] px-3 py-2 text-xs font-bold text-primary transition-colors hover:border-primary/50 hover:bg-primary/12 md:justify-self-end">
-                        Book with MSC
+                      <a data-testid={`button-book-${schedule.id}`} href={schedule.bookingUrl} target="_blank" rel="noreferrer" aria-label={`Book ${schedule.destination} sailing with ${schedule.carrier}`} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-primary/[0.06] px-3 py-2 text-xs font-bold text-primary transition-colors hover:border-primary/50 hover:bg-primary/12 md:justify-self-end">
+                        Book with {schedule.carrier}
                         <ExternalLink className="h-3.5 w-3.5" />
                       </a>
                     </article>

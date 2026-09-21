@@ -11,6 +11,8 @@ export interface HealthStatus {
 
 export interface Schedule {
   id: string;
+  carrier: string;
+  bookingUrl: string;
   origin: string;
   /** @nullable */
   originCountry: string | null;
