@@ -45,6 +45,11 @@ type FilterOption = {
   kind: 'Port' | 'Country';
 };
 
+type ExportFormat = 'pdf' | 'csv' | 'xlsx';
+type ExportFailure = {
+  format: ExportFormat;
+};
+
 const filtersFromLocation = (location: string): Filters => {
   const queryString = location.split('?')[1] ?? '';
   const query = new URLSearchParams(queryString);
@@ -132,6 +137,8 @@ function Dashboard() {
   const [destinationInput, setDestinationInput] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState('');
+  const [exporting, setExporting] = useState<ExportFormat | null>(null);
+  const [exportFailure, setExportFailure] = useState<ExportFailure | null>(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -242,6 +249,28 @@ function Dashboard() {
     filters,
   };
 
+  const exportManifest = async (format: ExportFormat) => {
+    setExporting(format);
+    setExportFailure(null);
+
+    try {
+      if (format === 'pdf') {
+        await exportSchedulesToPdf(exportOptions);
+      } else if (format === 'xlsx') {
+        await exportSchedulesToXlsx(exportOptions);
+      } else {
+        exportSchedulesToCsv(exportOptions);
+      }
+    } catch {
+      setExportFailure({ format });
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const exportLabel = exportFailure?.format.toUpperCase();
+  const isExporting = exporting !== null;
+
   return (
     <div className="desk-shell min-h-[100dvh] text-foreground">
       <aside className="nav-grid fixed inset-y-0 left-0 z-20 hidden w-[250px] flex-col bg-sidebar text-sidebar-foreground md:flex">
@@ -338,32 +367,38 @@ function Dashboard() {
                 <button
                   data-testid="button-export-pdf"
                   type="button"
-                  onClick={() => void exportSchedulesToPdf(exportOptions)}
-                  disabled={!schedules.length}
-                  title="Export visible departures as PDF"
+                   onClick={() => void exportManifest('pdf')}
+                   disabled={!schedules.length || isExporting}
+                   aria-busy={exporting === 'pdf'}
+                   title={exporting === 'pdf' ? 'Generating PDF export' : 'Export visible departures as PDF'}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-45"
                 >
-                  <FileText className="h-3.5 w-3.5 text-destructive" /> PDF
+                   {exporting === 'pdf' ? <RefreshCw className="h-3.5 w-3.5 animate-spin text-destructive" /> : <FileText className="h-3.5 w-3.5 text-destructive" />}
+                   {exporting === 'pdf' ? 'Generating…' : 'PDF'}
                 </button>
                 <button
                   data-testid="button-export-csv"
                   type="button"
-                  onClick={() => exportSchedulesToCsv(exportOptions)}
-                  disabled={!schedules.length}
-                  title="Export visible departures as CSV"
+                   onClick={() => void exportManifest('csv')}
+                   disabled={!schedules.length || isExporting}
+                   aria-busy={exporting === 'csv'}
+                   title={exporting === 'csv' ? 'Generating CSV export' : 'Export visible departures as CSV'}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-45"
                 >
-                  <FileDown className="h-3.5 w-3.5 text-emerald-700" /> CSV
+                   {exporting === 'csv' ? <RefreshCw className="h-3.5 w-3.5 animate-spin text-emerald-700" /> : <FileDown className="h-3.5 w-3.5 text-emerald-700" />}
+                   {exporting === 'csv' ? 'Generating…' : 'CSV'}
                 </button>
                 <button
                   data-testid="button-export-xlsx"
                   type="button"
-                  onClick={() => void exportSchedulesToXlsx(exportOptions)}
-                  disabled={!schedules.length}
-                  title="Export visible departures as XLSX"
+                   onClick={() => void exportManifest('xlsx')}
+                   disabled={!schedules.length || isExporting}
+                   aria-busy={exporting === 'xlsx'}
+                   title={exporting === 'xlsx' ? 'Generating XLSX export' : 'Export visible departures as XLSX'}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-45"
                 >
-                  <FileSpreadsheet className="h-3.5 w-3.5 text-primary" /> XLSX
+                   {exporting === 'xlsx' ? <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary" /> : <FileSpreadsheet className="h-3.5 w-3.5 text-primary" />}
+                   {exporting === 'xlsx' ? 'Generating…' : 'XLSX'}
                 </button>
                 {hasFilters && <button data-testid="button-clear-filters" type="button" onClick={clearFilters} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"><X className="h-3.5 w-3.5" /> Clear filters</button>}
                 <button data-testid="button-toggle-filters" type="button" onClick={() => setShowFilters(!showFilters)} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${showFilters || hasFilters ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border bg-card text-foreground hover:bg-secondary'}`}>
@@ -371,6 +406,24 @@ function Dashboard() {
                 </button>
               </div>
             </div>
+
+            {exportFailure && (
+              <div data-testid="status-export-error" role="alert" className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                <CircleAlert className="h-4 w-4 shrink-0" />
+                <p className="min-w-0 flex-1">
+                  <strong>{exportLabel} export failed.</strong> No file was downloaded. Try again, or refresh the page if the problem continues.
+                </p>
+                <button
+                  data-testid="button-retry-export"
+                  type="button"
+                  onClick={() => void exportManifest(exportFailure.format)}
+                  disabled={isExporting}
+                  className="rounded-lg border border-destructive/30 px-3 py-1.5 text-xs font-bold transition-colors hover:bg-destructive/10 disabled:cursor-wait disabled:opacity-50"
+                >
+                  Try again
+                </button>
+              </div>
+            )}
 
             {showFilters && (
                <form data-testid="form-schedule-filters" onSubmit={submitFilters} className="mb-5 grid gap-3 rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 md:grid-cols-[1.3fr_1fr_1fr_auto] md:items-end">
