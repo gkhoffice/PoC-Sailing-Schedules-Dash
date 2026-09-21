@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useMemo, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Anchor,
@@ -24,7 +24,7 @@ import {
   useGetSchedules,
   useRefreshSchedules,
 } from '@workspace/api-client-react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 
 type Filters = {
   destinations?: string[];
@@ -35,6 +35,20 @@ type Filters = {
 type FilterOption = {
   value: string;
   kind: 'Port' | 'Country';
+};
+
+const filtersFromLocation = (location: string): Filters => {
+  const queryString = location.split('?')[1] ?? '';
+  const query = new URLSearchParams(queryString);
+  const destinations = query.get('destination')?.split(',').map((value) => value.trim()).filter(Boolean);
+  const departureFrom = query.get('departureFrom') || undefined;
+  const departureTo = query.get('departureTo') || undefined;
+
+  return {
+    ...(destinations?.length ? { destinations } : {}),
+    ...(departureFrom ? { departureFrom } : {}),
+    ...(departureTo ? { departureTo } : {}),
+  };
 };
 
 const formatDate = (value: string | null | undefined, compact = false) => {
@@ -103,12 +117,21 @@ function ScheduleSkeleton() {
 }
 
 function Dashboard() {
-  const [draft, setDraft] = useState<Filters>({});
-  const [filters, setFilters] = useState<Filters>({});
+  const [location, setLocation] = useLocation();
+  const initialFilters = useMemo(() => filtersFromLocation(window.location.search), [location]);
+  const [draft, setDraft] = useState<Filters>(initialFilters);
+  const [filters, setFilters] = useState<Filters>(initialFilters);
   const [destinationInput, setDestinationInput] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState('');
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    setDraft(initialFilters);
+    setFilters(initialFilters);
+    setDestinationInput('');
+    setShowFilters(false);
+  }, [initialFilters]);
 
   const params = useMemo(() => ({
     ...(filters.destinations?.length ? { destination: filters.destinations.join(',') } : {}),
@@ -159,12 +182,19 @@ function Dashboard() {
     setDraft({});
     setDestinationInput('');
     setFilters({});
+    if (location.includes('?')) setLocation('/manifest');
   };
 
   const submitFilters = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const query = new URLSearchParams();
+    if (draft.destinations?.length) query.set('destination', draft.destinations.join(','));
+    if (draft.departureFrom) query.set('departureFrom', draft.departureFrom);
+    if (draft.departureTo) query.set('departureTo', draft.departureTo);
+    const queryString = query.toString();
     setFilters(draft);
     setShowFilters(false);
+    setLocation(`/manifest${queryString ? `?${queryString}` : ''}`);
   };
 
   const addDestination = (rawValue = destinationInput) => {
