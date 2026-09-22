@@ -24,7 +24,8 @@ export type ScheduleCache = {
 };
 
 const cachePath = path.resolve(
-  process.env.SCHEDULE_CACHE_PATH ?? path.join(process.cwd(), "data", "msc-schedules.json"),
+  process.env.SCHEDULE_CACHE_PATH ??
+    path.resolve(import.meta.dirname, "..", "data", "msc-schedules.json"),
 );
 
 const emptyCache = (): ScheduleCache => ({
