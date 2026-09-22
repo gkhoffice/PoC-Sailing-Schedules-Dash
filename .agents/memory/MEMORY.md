@@ -1,3 +1,4 @@
 - [Playwright Replit runtime](playwright-replit-runtime.md) — prefer the provided Chromium executable when bundled Playwright binaries lack native libraries.
 - [MSC schedule API](msc-schedule-api.md) — MSC requires one SearchSailingRoutes request per destination port; the public form cannot request all destinations with a blank To field.
 - [Maersk schedule API](maersk-schedule-api.md) — enumerate destinations, cap routing windows at eight weeks, and use first-leg departure/final-leg arrival for multi-leg routes.
+- [PDF fallback encoding](pdf-fallback-encoding.md) — jsPDF standard-font em dashes are WinAnsi byte 0x97 in raw downloaded PDFs.

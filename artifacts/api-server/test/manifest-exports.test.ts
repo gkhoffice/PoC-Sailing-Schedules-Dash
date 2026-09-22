@@ -12,15 +12,15 @@ type FixtureSchedule = {
   carrier: string;
   bookingUrl: string;
   origin: string;
-  originCountry: string;
+  originCountry: string | null;
   destination: string;
-  destinationCountry: string;
+  destinationCountry: string | null;
   vessel: string;
   voyage: string;
-  departureDate: string;
-  arrivalDate: string;
-  transitTime: string;
-  service: string;
+  departureDate: string | null;
+  arrivalDate: string | null;
+  transitTime: string | null;
+  service: string | null;
 };
 
 type XlsxModule = {
@@ -52,6 +52,21 @@ const fixture: FixtureSchedule[] = [
     arrivalDate: "2026-10-22",
     transitTime: "10 days",
     service: "Lion Service",
+  },
+  {
+    id: "sg-blank",
+    carrier: "MSC",
+    bookingUrl: "https://www.msc.com/en/lp/book-with-mymsc",
+    origin: "Port Louis",
+    originCountry: null,
+    destination: "Singapore",
+    destinationCountry: null,
+    vessel: "Fixture Unlisted",
+    voyage: "004S",
+    departureDate: null,
+    arrivalDate: null,
+    transitTime: null,
+    service: null,
   },
   {
     id: "za-1",
@@ -152,7 +167,7 @@ const installApiFixture = async (page: Page) => {
         destinationTerms.some(
           (term) =>
             schedule.destination.toLowerCase().includes(term) ||
-            schedule.destinationCountry.toLowerCase().includes(term),
+            schedule.destinationCountry?.toLowerCase().includes(term),
         );
       return (
         matchesDestination &&
@@ -237,25 +252,69 @@ test("manifest exports download filtered rows as usable PDF, CSV, and XLSX files
       "the filtered manifest should request both destination and date filters",
     );
 
+    await page.getByTestId("button-toggle-filters").click();
+    await page.getByTestId("input-departure-from").fill("");
+    await page.getByTestId("input-departure-to").fill("");
+    await page.getByTestId("button-search-schedules").click();
+    await page.getByTestId("row-schedule-sg-blank").waitFor();
+
+    assert.equal(await page.locator('[data-testid^="row-schedule-"]').count(), 2);
+    assert.equal(await page.getByTestId("text-departure-sg-blank").textContent(), "—");
+    assert.equal(await page.getByTestId("text-arrival-sg-blank").textContent(), "—");
+    assert.equal(await page.getByTestId("text-transit-sg-blank").textContent(), "—");
+
     const pdf = await assertDownload(page, "button-export-pdf", "pdf");
     const pdfText = pdf.content.toString("latin1");
     assert.match(pdfText, /^%PDF-/);
     assert.match(pdfText, /Singapore/);
+    assert.match(pdfText, /Fixture Unlisted/);
+    assert.ok(
+      (pdfText.match(/\x97/g) ?? []).length >= 5,
+      "PDF should preserve the em-dash fallback for country and blank schedule details",
+    );
     assert.doesNotMatch(pdfText, /Durban|Port Klang/);
 
     const csv = await assertDownload(page, "button-export-csv", "csv");
     const csvText = csv.content.toString("utf8");
     assert.match(csvText, /Destination,Country,Carrier/);
     assert.match(csvText, /Singapore/);
+    assert.match(
+      csvText,
+      /"Singapore","—","MSC","Port Louis","Fixture Unlisted","004S","—","—","—","—"/,
+    );
     assert.doesNotMatch(csvText, /Durban|Port Klang/);
 
     const xlsxExport = await assertDownload(page, "button-export-xlsx", "xlsx");
     assert.deepEqual([...xlsxExport.content.subarray(0, 2)], [0x50, 0x4b]);
     const workbook = xlsx.read(xlsxExport.content, { type: "buffer" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = xlsx.utils.sheet_to_json<{ Destination: string }>(sheet, { defval: "" });
-    assert.equal(rows.length, 1);
-    assert.equal(rows[0]?.Destination, "Singapore");
+    const rows = xlsx.utils.sheet_to_json<{
+      Destination: string;
+      Country: string;
+      Carrier: string;
+      Origin: string;
+      Vessel: string;
+      Voyage: string;
+      Departure: string;
+      Arrival: string;
+      Transit: string;
+      Service: string;
+      "Booking URL": string;
+    }>(sheet, { defval: "" });
+    assert.equal(rows.length, 2);
+    assert.deepEqual(rows.find((row) => row.Vessel === "Fixture Unlisted"), {
+      Destination: "Singapore",
+      Country: "—",
+      Carrier: "MSC",
+      Origin: "Port Louis",
+      Vessel: "Fixture Unlisted",
+      Voyage: "004S",
+      Departure: "—",
+      Arrival: "—",
+      Transit: "—",
+      Service: "—",
+      "Booking URL": "https://www.msc.com/en/lp/book-with-mymsc",
+    });
   } finally {
     await browser?.close();
     if (frontend.pid && !frontend.killed) {
