@@ -52,6 +52,8 @@ claim that these were the exact original words.
 
 > Please compile and consolidate all my prompts and the review of changes you made. Include the main prompt.
 
+> Please compile  all my prompts and the review of changes you made. Include the main prompt.
+
 ## Change review
 
 ### 1. Search page and separate manifest
