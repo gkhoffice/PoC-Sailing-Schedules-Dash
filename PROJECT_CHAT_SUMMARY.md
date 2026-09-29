@@ -15,6 +15,21 @@ platform-generated notices.
 **MSC Sailing Schedules** — a web app for finding MSC and Maersk sailings from
 Port Louis, Mauritius, and viewing the departure manifest.
 
+## Main prompt
+
+The opening project prompt is not available verbatim in the retained
+conversation. Reconstructed from the preserved project context, the main prompt
+was:
+
+> Update the existing MSC + Maersk sailing schedules app. Keep schedule search
+> on the main page, use Search for the search action, move the Departure
+> Manifest table to its own page, align the search controls horizontally, add
+> PDF, CSV, and XLSX exports to the manifest, and fix the published app so it
+> reads the populated schedule cache.
+
+This is a consolidated reconstruction of the overall project request, not a
+claim that these were the exact original words.
+
 ## Prompt archive
 
 ### Earlier requests reconstructed from compacted history
@@ -34,6 +49,8 @@ Port Louis, Mauritius, and viewing the departure manifest.
 > ok please export all prompts to workpace
 
 > Please compile and consolidate all my prompts and the review of changes you made.
+
+> Please compile and consolidate all my prompts and the review of changes you made. Include the main prompt.
 
 ## Change review
 
