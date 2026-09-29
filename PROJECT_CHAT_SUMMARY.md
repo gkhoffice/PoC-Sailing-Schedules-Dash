@@ -1,108 +1,151 @@
-# Project Prompts and Chat Summary
+# Project Prompts and Change Review
 
-This file consolidates the available project conversation into a reusable brief.
-Some older messages were compacted before this document was created, so the
-earlier requirements and decisions below are summarized rather than quoted
-verbatim. Recent user requests are quoted where they are available. This record
-contains project-facing requests and decisions, not internal system instructions.
+This is the consolidated project record for the MSC Sailing Schedules app. It
+includes the project requests available in the current conversation context and
+a review of the resulting code changes and verification.
+
+Some earlier messages were compacted before this record was created. Those
+earlier requests are reconstructed from the retained conversation summary and
+are marked as summaries, not verbatim quotes. This document covers project
+requests and code changes; it does not reproduce internal instructions or
+platform-generated notices.
 
 ## Project
 
 **MSC Sailing Schedules** — a web app for finding MSC and Maersk sailings from
 Port Louis, Mauritius, and viewing the departure manifest.
 
-## Consolidated requirements
+## Prompt archive
 
-1. Keep a main-page search form for destination and departure-date filtering.
-2. Make the departure manifest a separate page at `/manifest`.
-3. Use **Search** for the search/filter action.
-4. Align all desktop search-form fields and actions on the same horizontal level.
-5. Add PDF, CSV, and XLSX exports to the Departure manifest. Export the rows
-   currently shown, including the active destination/date filters.
-6. Ensure the published app displays the schedule data, not an empty cache.
+### Earlier requests reconstructed from compacted history
 
-## Conversation record
+1. Keep schedule search on the main page, use **Search** instead of **Filter**,
+   and put the Departure Manifest table on a separate page.
+2. “align all boxes in the search form on the same horizontal level.”
 
-### Search and manifest layout
+### Exact user prompts available in the current context
 
-**User request, summarized from compacted conversation:**  
-Keep search on the main page, move the Departure Manifest table to its own page,
-and replace the Filter call to action with Search.
+> please add option to export to PDF, CSV and XLSX. Add it to the Departure manifest section
 
-**Follow-up request:**  
-“align all boxes in the search form on the same horizontal level.”
+> I have published the app, but it shows no data...
 
-**Outcome:**  
-The main page is `/`; `/manifest` contains the schedule table. Searches carry
-destination/date values through URL parameters. The desktop search form uses
-top-aligned controls so the destination helper text does not offset the date
-inputs and actions. The route/filter flow was previously checked in the browser,
-including a filtered Singapore result.
+> please consolidate all prompt and chat and save it to workspace.
 
-### Manifest exports
+> ok please export all prompts to workpace
 
-**User request:**  
-“please add option to export to PDF, CSV and XLSX. Add it to the Departure
-manifest section”
+> Please compile and consolidate all my prompts and the review of changes you made.
 
-**Outcome:**  
-PDF, CSV, and XLSX controls were added beside Search in the Departure manifest.
-They export the currently shown schedules and include schedule details and
-booking URLs. PDF and XLSX dependencies are lazy-loaded to avoid increasing the
-initial JavaScript bundle unnecessarily.
+## Change review
 
-**Verification recorded:**  
-API/client typechecks and the production frontend build passed. The manifest
-export test verifies filtered data and usable PDF, CSV, and XLSX downloads.
-Follow-up tasks were merged to cover export downloads, generation errors, and
-blank schedule details.
+### 1. Search page and separate manifest
 
-### Published app showed no schedule data
+**What changed**
 
-**User request:**  
-“I have published the app, but it shows no data...”
+- `/` is the main search page; `/manifest` is the departure board.
+- The main form searches by destination and departure-date window.
+- Search values are carried in the URL so filtered results can be opened or
+  reloaded directly.
+- The manifest has a **Search** action to show its filter form.
 
-**Investigation:**  
-The published `/api/schedules` endpoint returned HTTP 200 with an empty result.
-The repository contains a populated cache at
-`artifacts/api-server/data/msc-schedules.json` (4,051 rows) and an empty
-root-level placeholder at `data/msc-schedules.json`. In production, the API was
-using the working-directory-relative placeholder. Production logs also showed
-that manual refresh could not launch Chromium at `/repl/tools/bin/chromium`;
-that is separate from the empty-cache cause and means refreshing live carrier
-data may fail in that runtime.
+**Review**
 
-**Fix and verification:**  
-The API cache default now resolves relative to the API module/artifact location,
-while retaining `SCHEDULE_CACHE_PATH` as an override. Typecheck and all 13 API
-tests passed. A compiled production-style server run from the repository root
-returned 4,051 schedules from the bundled artifact cache.
+- Filters are applied to the schedule request, and direct URL filters were
+  checked. A Singapore/date search was previously verified to show only its
+  matching row.
+- The implementation reads `window.location.search` for manifest filters
+  because the Wouter location value did not include the query string in the
+  tested flow.
 
-**Current status:**  
-The source fix is in the workspace. The corrected version must be published
-before the live app will use it.
+### 2. Search-form alignment
 
-## Key behavior and implementation decisions
+**What changed**
 
-- The manifest query string is read from `window.location.search` because the
-  Wouter location value did not include it in the tested flow.
-- Schedule reads use the local JSON cache; the explicit refresh endpoint runs
-  the carrier scrapers.
-- Failed refreshes should retain existing cached rows rather than replace them
-  with an empty result.
-- The bundled API cache must be located from the module/artifact path, not
-  `process.cwd()`, because development and production may start from different
-  working directories.
+- Desktop grid items are top-aligned, with spacing on the action group to align
+  Clear/Search with the date inputs.
+- Destination helper text remains below the destination box rather than moving
+  the date controls downward.
 
-## Relevant workspace areas
+**Review**
 
+- The desktop layout was inspected in a 1440px-wide preview.
+- The frontend typecheck passed after the alignment change.
+
+### 3. PDF, CSV, and XLSX manifest exports
+
+**What changed**
+
+- PDF, CSV, and XLSX buttons were added beside Search in the Departure manifest.
+- Exports use the visible, filtered schedule rows.
+- The files include destination, carrier, origin, vessel, voyage, departure,
+  arrival, transit, service, and booking URL data where applicable.
+- PDF includes the active filter summary and paginates; XLSX includes sensible
+  column widths; CSV uses quoted/escaped fields and a UTF-8 BOM.
+- Missing schedule details are displayed as em dashes in exports.
+- Export buttons show progress, disable during generation, and report failures
+  with a retry action.
+- PDF and XLSX libraries load on demand to keep the initial app bundle smaller.
+
+**Review**
+
+- Browser tests verify non-empty PDF, CSV, and XLSX downloads and check that
+  filtered exports omit unrelated destinations.
+- Tests also cover missing fields in rows, including readable blank dates and
+  transit details.
+- The production frontend build and typecheck passed. The build retains an
+  existing tooltip sourcemap warning.
+
+### 4. Published app returned no schedule data
+
+**What changed**
+
+- The API cache default was changed from a working-directory-relative location
+  to a path resolved relative to the API module/artifact.
+- The `SCHEDULE_CACHE_PATH` override remains available.
+
+**Cause found**
+
+- Production was reading the empty root-level placeholder file instead of the
+  populated cache bundled under the API artifact.
+- The populated bundled cache contained 4,051 sailings.
+
+**Review and verification**
+
+- API typecheck passed and all 13 API tests passed after the fix.
+- A production-style local run of the compiled API, started from the repository
+  root, returned all 4,051 bundled schedule rows.
+- This fixes the cache path in source; the published app must be republished
+  before it will serve the corrected build.
+
+**Separate refresh limitation**
+
+- Production logs also showed the manual carrier refresh could not find
+  `/repl/tools/bin/chromium`. That is separate from the empty-cache bug. The
+  bundled cache should be readable after republishing, but live carrier refresh
+  may still fail until the production browser executable configuration is
+  addressed.
+
+## Verification summary
+
+- Search and filtered navigation: previously checked in the browser, including
+  direct destination/date filtering.
+- Search alignment: visually checked at desktop width; typecheck passed.
+- Exports: browser download tests cover all three formats, filtered rows, and
+  incomplete schedule details.
+- API cache correction: typecheck, 13 API tests, and a compiled production-style
+  API request passed with 4,051 schedules.
+- Frontend production build: passed with lazy-loaded export dependencies.
+- No live post-fix production verification is recorded here because the fixed
+  version still needs to be published.
+
+## Main workspace files
+
+- `artifacts/msc-schedules/src/App.tsx` — route registration
 - `artifacts/msc-schedules/src/pages/search.tsx` — main search page
 - `artifacts/msc-schedules/src/pages/dashboard.tsx` — departure manifest,
-  filtering, and export controls
+  filters, and export controls
 - `artifacts/msc-schedules/src/lib/export-schedules.ts` — PDF, CSV, and XLSX
-  export generation
+  generation
 - `artifacts/api-server/src/routes/schedules.ts` — schedule, summary, and
   refresh endpoints
-- `artifacts/api-server/src/lib/schedule-store.ts` — cache path and cache I/O
-- `artifacts/api-server/data/msc-schedules.json` — bundled populated schedule
-  cache
+- `artifacts/api-server/src/lib/schedule-store.ts` — schedule-cache path and I/O
+- `artifacts/api-server/data/msc-schedules.json` — bundled schedule cache
