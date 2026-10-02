@@ -43,6 +43,23 @@ From the repository root:
 docker compose build
 ```
 
+## Deploy on Render
+
+Render starts one Docker web service, not the multi-service Compose stack. The
+Dockerfile's final `render` target therefore serves both the frontend and API
+from the same container. It defaults to port `10000` and honors Render's
+`PORT` environment variable.
+
+In Render, create a **Web Service** using the Docker environment, with the
+repository root as the build context and `./Dockerfile` as the Dockerfile path.
+Do not set an Nginx `API_HOST` or deploy only the `web` target. The API is
+available under `/api`; `/api/healthz` can be used as the health-check path.
+
+To keep schedule refreshes across redeploys, attach a Render persistent disk
+mounted at `/app/data`. Without a disk, the app still starts with the bundled
+schedule cache, but refreshed cache data is not durable across instance
+replacement.
+
 The multi-stage Dockerfile builds the frontend assets and API, then uses an
 Nginx image for the web runtime and the matching Playwright image for API-driven
 carrier refreshes.

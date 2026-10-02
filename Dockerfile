@@ -56,3 +56,13 @@ COPY --from=web-build /workspace/artifacts/msc-schedules/dist/public/ /usr/share
 COPY docker/nginx.conf.template /etc/nginx/templates/default.conf.template
 
 EXPOSE 8080
+
+# Render runs one Docker web service rather than the multi-service Compose
+# stack. This default final target serves the built SPA and API from one port.
+FROM api AS render
+
+ENV PORT=10000 \
+    STATIC_WEB_ROOT=/app/public
+COPY --chown=pwuser:pwuser --from=web-build /workspace/artifacts/msc-schedules/dist/public/ /app/public/
+
+EXPOSE 10000

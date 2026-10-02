@@ -1,0 +1,150 @@
+2026-10-02T13:27:26.249820298Z 
+2026-10-02T13:27:26.249823315Z #13 [workspace  2/15] WORKDIR /workspace
+2026-10-02T13:27:26.249825567Z #13 DONE 0.0s
+2026-10-02T13:27:26.249827604Z 
+2026-10-02T13:27:26.249830247Z #14 [workspace  3/15] RUN corepack enable && corepack prepare pnpm@10.26.1 --activate
+2026-10-02T13:27:26.287292141Z #14 0.184 Preparing pnpm@10.26.1 for immediate activation...
+2026-10-02T13:27:27.526300235Z #14 DONE 1.4s
+2026-10-02T13:27:27.631709946Z 
+2026-10-02T13:27:27.631726377Z #15 [workspace  4/15] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+2026-10-02T13:27:27.631728253Z #15 DONE 0.0s
+2026-10-02T13:27:27.631729836Z 
+2026-10-02T13:27:27.631731394Z #16 [workspace  5/15] COPY artifacts/api-server/package.json ./artifacts/api-server/package.json
+2026-10-02T13:27:27.631732917Z #16 DONE 0.0s
+2026-10-02T13:27:27.63173418Z 
+2026-10-02T13:27:27.631736749Z #17 [workspace  6/15] COPY artifacts/msc-schedules/package.json ./artifacts/msc-schedules/package.json
+2026-10-02T13:27:27.631738184Z #17 DONE 0.0s
+2026-10-02T13:27:27.631739395Z 
+2026-10-02T13:27:27.631740682Z #18 [workspace  7/15] COPY artifacts/mockup-sandbox/package.json ./artifacts/mockup-sandbox/package.json
+2026-10-02T13:27:27.631741964Z #18 DONE 0.0s
+2026-10-02T13:27:27.631743095Z 
+2026-10-02T13:27:27.631744393Z #19 [workspace  8/15] COPY lib/api-client-react/package.json ./lib/api-client-react/package.json
+2026-10-02T13:27:27.631745668Z #19 DONE 0.0s
+2026-10-02T13:27:27.631746775Z 
+2026-10-02T13:27:27.631748777Z #20 [workspace  9/15] COPY lib/api-spec/package.json ./lib/api-spec/package.json
+2026-10-02T13:27:27.63175002Z #20 DONE 0.0s
+2026-10-02T13:27:27.631751176Z 
+2026-10-02T13:27:27.631752508Z #21 [workspace 10/15] COPY lib/api-zod/package.json ./lib/api-zod/package.json
+2026-10-02T13:27:27.63175377Z #21 DONE 0.0s
+2026-10-02T13:27:27.63175488Z 
+2026-10-02T13:27:27.631756209Z #22 [workspace 11/15] COPY lib/db/package.json ./lib/db/package.json
+2026-10-02T13:27:27.631757453Z #22 DONE 0.0s
+2026-10-02T13:27:27.806715233Z 
+2026-10-02T13:27:27.806734822Z #23 [workspace 12/15] COPY scripts/package.json ./scripts/package.json
+2026-10-02T13:27:27.80673674Z #23 DONE 0.0s
+2026-10-02T13:27:27.806738535Z 
+2026-10-02T13:27:27.806742832Z #24 [workspace 13/15] COPY tsconfig.base.json tsconfig.json ./
+2026-10-02T13:27:27.806744227Z #24 DONE 0.0s
+2026-10-02T13:27:27.806745404Z 
+2026-10-02T13:27:27.806746724Z #25 [workspace 14/15] RUN pnpm install --frozen-lockfile
+2026-10-02T13:27:28.121562362Z #25 0.465 Scope: all 9 workspace projects
+2026-10-02T13:27:28.223071195Z #25 0.540 Lockfile is up to date, resolution step is skipped
+2026-10-02T13:27:28.223085349Z #25 0.567 Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-10-02T13:27:28.512420193Z #25 0.622 Packages: +508
+2026-10-02T13:27:28.512434841Z #25 0.622 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2026-10-02T13:27:29.225327539Z #25 1.569 Progress: resolved 508, reused 0, downloaded 6, added 0
+2026-10-02T13:27:30.233405632Z #25 2.575 Progress: resolved 508, reused 0, downloaded 381, added 87
+2026-10-02T13:27:31.219147046Z #25 3.563 
+2026-10-02T13:27:31.219162512Z #25 3.563    ╭──────────────────────────────────────────────╮
+2026-10-02T13:27:31.219164723Z #25 3.563    │                                              │
+2026-10-02T13:27:31.219166266Z #25 3.563    │     Update available! 10.26.1 → 12.8.1.      │
+2026-10-02T13:27:31.219168019Z #25 3.563    │     Changelog: https://pnpm.io/v/12.8.1      │
+2026-10-02T13:27:31.219169545Z #25 3.563    │   To update, run: corepack use pnpm@12.8.1   │
+2026-10-02T13:27:31.2191709Z #25 3.563    │                                              │
+2026-10-02T13:27:31.219172547Z #25 3.563    ╰──────────────────────────────────────────────╯
+2026-10-02T13:27:31.219187759Z #25 3.563 
+2026-10-02T13:27:31.412487822Z #25 3.576 Progress: resolved 508, reused 0, downloaded 489, added 198
+2026-10-02T13:27:32.242384279Z #25 4.586 Progress: resolved 508, reused 0, downloaded 504, added 502
+2026-10-02T13:27:32.868383037Z #25 5.212 Progress: resolved 508, reused 0, downloaded 508, added 508, done
+2026-10-02T13:27:33.052145735Z #25 5.396 .../esbuild@0.28.2/node_modules/esbuild postinstall$ node install.js
+2026-10-02T13:27:33.155794194Z #25 5.500 .../esbuild@0.28.2/node_modules/esbuild postinstall: Done
+2026-10-02T13:27:33.453317367Z #25 5.796 
+2026-10-02T13:27:33.453335339Z #25 5.796 dependencies:
+2026-10-02T13:27:33.453340286Z #25 5.796 + @replit/connectors-sdk 0.4.3
+2026-10-02T13:27:33.45334225Z #25 5.796 
+2026-10-02T13:27:33.453345536Z #25 5.796 devDependencies:
+2026-10-02T13:27:33.453347619Z #25 5.796 + prettier 3.9.6
+2026-10-02T13:27:33.453349829Z #25 5.796 + typescript 5.9.3
+2026-10-02T13:27:33.453351793Z #25 5.796 
+2026-10-02T13:27:33.626670959Z #25 5.876 . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+2026-10-02T13:27:33.626687559Z #25 5.969 . preinstall: Done
+2026-10-02T13:27:33.790647263Z #25 6.134 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+2026-10-02T13:27:33.790664649Z #25 6.134 │                                                                              │
+2026-10-02T13:27:33.790667623Z #25 6.134 │   Ignored build scripts: core-js@3.50.0.                                     │
+2026-10-02T13:27:33.790670451Z #25 6.134 │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+2026-10-02T13:27:33.790672557Z #25 6.134 │   to run scripts.                                                            │
+2026-10-02T13:27:33.790674781Z #25 6.134 │                                                                              │
+2026-10-02T13:27:33.790677244Z #25 6.134 ╰──────────────────────────────────────────────────────────────────────────────╯
+2026-10-02T13:27:33.930837042Z #25 6.275 Done in 6.1s using pnpm v10.26.1
+2026-10-02T13:27:35.03197869Z #25 DONE 7.4s
+2026-10-02T13:27:35.183349767Z 
+2026-10-02T13:27:35.183372571Z #26 [workspace 15/15] COPY . .
+2026-10-02T13:27:35.44208179Z #26 DONE 0.4s
+2026-10-02T13:27:35.593148179Z 
+2026-10-02T13:27:35.593170715Z #27 [web-build 1/1] RUN pnpm --filter @workspace/msc-schedules run build
+2026-10-02T13:27:35.823451638Z #27 0.381 
+2026-10-02T13:27:35.823461154Z #27 0.381 > @workspace/msc-schedules@0.0.0 build /workspace/artifacts/msc-schedules
+2026-10-02T13:27:35.823463203Z #27 0.381 > vite build --config vite.config.ts
+2026-10-02T13:27:35.823464701Z #27 0.381 
+2026-10-02T13:27:36.097715313Z #27 0.655 vite v7.3.6 building client environment for production...
+2026-10-02T13:27:36.308498464Z #27 0.716 transforming...
+2026-10-02T13:27:36.530986322Z #27 1.088 src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+2026-10-02T13:27:40.847092753Z #27 5.404 ✓ 2022 modules transformed.
+2026-10-02T13:27:41.113504256Z #27 5.671 rendering chunks...
+2026-10-02T13:27:41.291298945Z #27 5.849 computing gzip size...
+2026-10-02T13:27:41.458639303Z #27 5.865 dist/public/index.html                            1.44 kB │ gzip:   0.55 kB
+2026-10-02T13:27:41.458657716Z #27 5.865 dist/public/assets/index-sWuWgcj0.css           110.95 kB │ gzip:  18.11 kB
+2026-10-02T13:27:41.458660465Z #27 5.865 dist/public/assets/purify.es-CEBYger9.js         28.86 kB │ gzip:  11.06 kB
+2026-10-02T13:27:41.458662853Z #27 5.865 dist/public/assets/index.es-Df3Z1l7Q.js         158.95 kB │ gzip:  53.06 kB
+2026-10-02T13:27:41.458665154Z #27 5.865 dist/public/assets/html2canvas.esm-DXEQVQnt.js  201.04 kB │ gzip:  47.43 kB
+2026-10-02T13:27:41.458667229Z #27 5.865 dist/public/assets/index-BIZzi8YE.js            383.96 kB │ gzip: 119.01 kB
+2026-10-02T13:27:41.458669274Z #27 5.865 dist/public/assets/jspdf.es.min-eH6hvE6_.js     386.19 kB │ gzip: 126.39 kB
+2026-10-02T13:27:41.458671346Z #27 5.865 dist/public/assets/xlsx-CNerDvZX.js             429.19 kB │ gzip: 142.94 kB
+2026-10-02T13:27:41.458674194Z #27 5.866 ✓ built in 5.18s
+2026-10-02T13:27:41.675819304Z #27 DONE 6.2s
+2026-10-02T13:27:41.794733083Z 
+2026-10-02T13:27:41.794756154Z #28 [web 2/3] COPY --from=web-build /workspace/artifacts/msc-schedules/dist/public/ /usr/share/nginx/html/
+2026-10-02T13:27:41.794758277Z #28 DONE 0.1s
+2026-10-02T13:27:41.7947596Z 
+2026-10-02T13:27:41.794761714Z #29 [web 3/3] COPY docker/nginx.conf.template /etc/nginx/templates/default.conf.template
+2026-10-02T13:27:41.794763137Z #29 DONE 0.0s
+2026-10-02T13:27:41.794764335Z 
+2026-10-02T13:27:41.794766023Z #30 exporting to image
+2026-10-02T13:27:41.794767739Z #30 exporting layers 0.0s done
+2026-10-02T13:27:41.949449428Z #30 pushing layers
+2026-10-02T13:27:43.72502873Z #30 pushing layers 1.9s done
+2026-10-02T13:27:43.895392736Z #30 DONE 2.1s
+2026-10-02T13:27:43.895401924Z 
+2026-10-02T13:27:43.895404056Z #31 exporting cache to registry
+2026-10-02T13:27:43.895406073Z #31 preparing build cache for export
+2026-10-02T13:27:57.354571618Z #31 sending cache export
+2026-10-02T13:28:02.313102954Z #31 sending cache export 5.0s done
+2026-10-02T13:28:02.313109564Z #31 DONE 20.5s
+2026-10-02T13:28:03.449637036Z ==> Deploying...
+2026-10-02T13:28:03.569646878Z ==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+2026-10-02T13:28:07.26576042Z /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+2026-10-02T13:28:07.265788931Z /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+2026-10-02T13:28:07.28851898Z /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+2026-10-02T13:28:07.300870542Z 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+2026-10-02T13:28:07.397063063Z 10-listen-on-ipv6-by-default.sh: info: Enabled listen on IPv6 in /etc/nginx/conf.d/default.conf
+2026-10-02T13:28:07.397337531Z /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+2026-10-02T13:28:07.397527966Z /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+2026-10-02T13:28:07.48838122Z 20-envsubst-on-templates.sh: Running envsubst on /etc/nginx/templates/default.conf.template to /etc/nginx/conf.d/default.conf
+2026-10-02T13:28:07.490659863Z /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+2026-10-02T13:28:07.492149005Z /docker-entrypoint.sh: Configuration complete; ready for start up
+2026-10-02T13:28:07.49851149Z 2026/10/02 13:28:07 [emerg] 1#1: host not found in upstream "api" in /etc/nginx/conf.d/default.conf:14
+2026-10-02T13:28:07.498528431Z nginx: [emerg] host not found in upstream "api" in /etc/nginx/conf.d/default.conf:14
+2026-10-02T13:28:08.869002451Z /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+2026-10-02T13:28:08.869026002Z /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+2026-10-02T13:28:08.87004373Z /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+2026-10-02T13:28:08.911465946Z 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+2026-10-02T13:28:08.920954149Z 10-listen-on-ipv6-by-default.sh: info: Enabled listen on IPv6 in /etc/nginx/conf.d/default.conf
+2026-10-02T13:28:08.921260677Z /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+2026-10-02T13:28:08.921436002Z /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+2026-10-02T13:28:09.014641121Z 20-envsubst-on-templates.sh: Running envsubst on /etc/nginx/templates/default.conf.template to /etc/nginx/conf.d/default.conf
+2026-10-02T13:28:09.016920764Z /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+2026-10-02T13:28:09.018543499Z /docker-entrypoint.sh: Configuration complete; ready for start up
+2026-10-02T13:28:09.10965994Z 2026/10/02 13:28:09 [emerg] 1#1: host not found in upstream "api" in /etc/nginx/conf.d/default.conf:14
+2026-10-02T13:28:09.109679681Z nginx: [emerg] host not found in upstream "api" in /etc/nginx/conf.d/default.conf:14
+2026-10-02T13:28:09.199346695Z ==> Exited with status 1
+2026-10-02T13:28:09.202494022Z ==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
