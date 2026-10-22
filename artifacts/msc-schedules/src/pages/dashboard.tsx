@@ -86,6 +86,24 @@ const formatUpdated = (value: string | null | undefined) => {
 };
 
 const formatCount = (value: number | undefined) => new Intl.NumberFormat('en-US').format(value ?? 0);
+
+const getPaginationItems = (currentPage: number, totalPages: number) => {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const items: Array<number | 'ellipsis-left' | 'ellipsis-right'> = [1];
+  const startPage = Math.max(2, currentPage - 1);
+  const endPage = Math.min(totalPages - 1, currentPage + 1);
+
+  if (startPage > 2) items.push('ellipsis-left');
+  for (let page = startPage; page <= endPage; page += 1) items.push(page);
+  if (endPage < totalPages - 1) items.push('ellipsis-right');
+  items.push(totalPages);
+
+  return items;
+};
+
 function MetricCard({
   label,
   value,
@@ -139,6 +157,8 @@ function Dashboard() {
   const [refreshMessage, setRefreshMessage] = useState('');
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
   const [exportFailure, setExportFailure] = useState<ExportFailure | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -146,6 +166,7 @@ function Dashboard() {
     setFilters(initialFilters);
     setDestinationInput('');
     setShowFilters(false);
+    setCurrentPage(1);
   }, [initialFilters]);
 
   const params = useMemo(() => ({
@@ -159,6 +180,12 @@ function Dashboard() {
   const summaryQuery = useGetScheduleSummary();
   const refreshMutation = useRefreshSchedules();
   const schedules = schedulesQuery.data?.schedules ?? [];
+  const totalPages = Math.max(1, Math.ceil(schedules.length / pageSize));
+  const activePage = Math.min(currentPage, totalPages);
+  const firstVisibleRow = schedules.length ? (activePage - 1) * pageSize + 1 : 0;
+  const lastVisibleRow = Math.min(activePage * pageSize, schedules.length);
+  const visibleSchedules = schedules.slice(firstVisibleRow - 1, lastVisibleRow);
+  const paginationItems = getPaginationItems(activePage, totalPages);
   const filterOptions = useMemo(() => {
     const options = new Map<string, FilterOption>();
     const addOption = (value: string | null | undefined, kind: FilterOption['kind']) => {
@@ -193,10 +220,15 @@ function Dashboard() {
   const isError = schedulesQuery.isError || summaryQuery.isError;
   const stale = Boolean(schedulesQuery.data?.isStale || summaryQuery.data?.isStale);
 
+  useEffect(() => {
+    if (currentPage !== activePage) setCurrentPage(activePage);
+  }, [activePage, currentPage]);
+
   const clearFilters = () => {
     setDraft({});
     setDestinationInput('');
     setFilters({});
+    setCurrentPage(1);
     if (location.includes('?')) setLocation('/manifest');
   };
 
@@ -208,6 +240,7 @@ function Dashboard() {
     if (draft.departureTo) query.set('departureTo', draft.departureTo);
     const queryString = query.toString();
     setFilters(draft);
+    setCurrentPage(1);
     setShowFilters(false);
     setLocation(`/manifest${queryString ? `?${queryString}` : ''}`);
   };
@@ -359,7 +392,7 @@ function Dashboard() {
                 <p className="eyebrow text-muted-foreground">Departure manifest</p>
                 <div className="mt-1 flex flex-wrap items-center gap-3">
                    <h2 className="text-xl font-bold tracking-[-0.03em]">MSC + Maersk sailings</h2>
-                  <span data-testid="text-schedule-count" className="rounded-full bg-secondary px-2.5 py-1 font-mono text-[0.68rem] text-secondary-foreground">{formatCount(schedules.length)} shown</span>
+                  <span data-testid="text-schedule-count" className="rounded-full bg-secondary px-2.5 py-1 font-mono text-[0.68rem] text-secondary-foreground">{formatCount(schedules.length)} total</span>
                 </div>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
@@ -370,7 +403,7 @@ function Dashboard() {
                    onClick={() => void exportManifest('pdf')}
                    disabled={!schedules.length || isExporting}
                    aria-busy={exporting === 'pdf'}
-                   title={exporting === 'pdf' ? 'Generating PDF export' : 'Export visible departures as PDF'}
+                   title={exporting === 'pdf' ? 'Generating PDF export' : 'Export all matching departures as PDF'}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-45"
                 >
                    {exporting === 'pdf' ? <RefreshCw className="h-3.5 w-3.5 animate-spin text-destructive" /> : <FileText className="h-3.5 w-3.5 text-destructive" />}
@@ -382,7 +415,7 @@ function Dashboard() {
                    onClick={() => void exportManifest('csv')}
                    disabled={!schedules.length || isExporting}
                    aria-busy={exporting === 'csv'}
-                   title={exporting === 'csv' ? 'Generating CSV export' : 'Export visible departures as CSV'}
+                   title={exporting === 'csv' ? 'Generating CSV export' : 'Export all matching departures as CSV'}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-45"
                 >
                    {exporting === 'csv' ? <RefreshCw className="h-3.5 w-3.5 animate-spin text-emerald-700" /> : <FileDown className="h-3.5 w-3.5 text-emerald-700" />}
@@ -394,7 +427,7 @@ function Dashboard() {
                    onClick={() => void exportManifest('xlsx')}
                    disabled={!schedules.length || isExporting}
                    aria-busy={exporting === 'xlsx'}
-                   title={exporting === 'xlsx' ? 'Generating XLSX export' : 'Export visible departures as XLSX'}
+                   title={exporting === 'xlsx' ? 'Generating XLSX export' : 'Export all matching departures as XLSX'}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-45"
                 >
                    {exporting === 'xlsx' ? <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary" /> : <FileSpreadsheet className="h-3.5 w-3.5 text-primary" />}
@@ -510,7 +543,7 @@ function Dashboard() {
                   <span>Destination</span><span>Vessel / voyage</span><span>Departure</span><span>Arrival</span><span>Transit</span><span className="text-right">Book</span>
                 </div>
                 <div className="divide-y divide-border/60">
-                  {schedules.map((schedule, index) => (
+                  {visibleSchedules.map((schedule, index) => (
                     <article data-testid={`row-schedule-${schedule.id}`} key={schedule.id} className="stagger-in grid gap-4 px-4 py-5 transition-colors duration-200 hover:bg-primary/[0.035] md:grid-cols-[1.3fr_1fr_0.8fr_0.8fr_0.65fr_auto] md:items-center md:px-5" style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}>
                       <div className="route-line pl-5">
                         <div className="flex items-center gap-2">
@@ -538,6 +571,90 @@ function Dashboard() {
                       </a>
                     </article>
                   ))}
+                </div>
+                <div className="flex flex-col gap-3 border-t border-border/70 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                      <span>Rows per page</span>
+                      <select
+                        data-testid="select-page-size"
+                        aria-label="Rows per page"
+                        value={pageSize}
+                        onChange={(event) => {
+                          setPageSize(Number(event.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                      >
+                        {[10, 25, 50].map((size) => (
+                          <option key={size} value={size}>{size}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <span
+                      data-testid="text-pagination-range"
+                      aria-live="polite"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Showing {formatCount(firstVisibleRow)}–{formatCount(lastVisibleRow)} of {formatCount(schedules.length)} sailings
+                    </span>
+                  </div>
+
+                  {totalPages > 1 && (
+                    <nav
+                      aria-label="Manifest pages"
+                      data-testid="manifest-pagination"
+                      className="flex flex-wrap items-center justify-start gap-1 sm:justify-end"
+                    >
+                      <button
+                        type="button"
+                        aria-label="Previous page"
+                        data-testid="button-previous-page"
+                        onClick={() => setCurrentPage(activePage - 1)}
+                        disabled={activePage === 1}
+                        className="h-9 rounded-md border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-45"
+                      >
+                        Previous
+                      </button>
+                      {paginationItems.map((item) => (
+                        typeof item === 'number' ? (
+                          <button
+                            key={item}
+                            type="button"
+                            aria-label={`Page ${item}`}
+                            aria-current={activePage === item ? 'page' : undefined}
+                            data-testid={`button-page-${item}`}
+                            onClick={() => setCurrentPage(item)}
+                            className={`h-9 min-w-9 rounded-md border px-2 text-xs font-semibold transition-colors ${
+                              activePage === item
+                                ? 'border-primary bg-primary/10 text-primary'
+                                : 'border-transparent text-foreground hover:border-border hover:bg-secondary'
+                            }`}
+                          >
+                            {item}
+                          </button>
+                        ) : (
+                          <span
+                            key={item}
+                            aria-hidden="true"
+                            className="px-1 text-sm text-muted-foreground"
+                          >
+                            …
+                          </span>
+                        )
+                      ))}
+                      <button
+                        type="button"
+                        aria-label="Next page"
+                        data-testid="button-next-page"
+                        onClick={() => setCurrentPage(activePage + 1)}
+                        disabled={activePage === totalPages}
+                        className="h-9 rounded-md border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-45"
+                      >
+                        Next
+                      </button>
+                    </nav>
+                  )}
                 </div>
               </div>
             )}
