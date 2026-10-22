@@ -1,12 +1,9 @@
-import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Anchor,
-  ArrowDownToLine,
-  ArrowUpRight,
   CheckCircle2,
   CircleAlert,
-  Clock3,
   Database,
   ExternalLink,
   FileDown,
@@ -16,7 +13,6 @@ import {
   RefreshCw,
   Search,
   ShipWheel,
-  Waves,
   X,
 } from 'lucide-react';
 import {
@@ -103,37 +99,6 @@ const getPaginationItems = (currentPage: number, totalPages: number) => {
   return items;
 };
 
-function MetricCard({
-  label,
-  value,
-  detail,
-  icon,
-  tone = 'teal',
-  testId,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  icon: ReactNode;
-  tone?: 'teal' | 'amber' | 'ink';
-  testId: string;
-}) {
-  return (
-    <article data-testid={testId} className="group relative overflow-hidden rounded-2xl border border-border/70 bg-card/90 p-5 shadow-[0_8px_24px_hsl(202_50%_17%/0.04)] transition-transform duration-200 hover:-translate-y-0.5">
-      <div className={`absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full ${tone === 'amber' ? 'bg-accent/15' : tone === 'ink' ? 'bg-sidebar/10' : 'bg-primary/10'}`} />
-      <div className="relative flex items-start justify-between">
-        <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${tone === 'amber' ? 'bg-accent/20 text-amber-800' : tone === 'ink' ? 'bg-sidebar/10 text-sidebar' : 'bg-primary/12 text-primary'}`}>
-          {icon}
-        </span>
-        <ArrowUpRight className="h-4 w-4 text-muted-foreground/50 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-      </div>
-      <p className="relative mt-5 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
-      <p data-testid={`${testId}-value`} className="relative mt-1 font-mono text-2xl font-medium tracking-tight text-foreground">{value}</p>
-      <p className="relative mt-1 text-xs text-muted-foreground">{detail}</p>
-    </article>
-  );
-}
-
 function ScheduleSkeleton() {
   return (
     <div data-testid="loading-schedules" className="space-y-3">
@@ -215,7 +180,6 @@ function Dashboard() {
     Boolean(filters.departureTo),
   ].filter(Boolean).length;
   const hasFilters = activeFilterCount > 0;
-  const isInitialLoading = schedulesQuery.isLoading || summaryQuery.isLoading;
   const isError = schedulesQuery.isError || summaryQuery.isError;
   const stale = Boolean(schedulesQuery.data?.isStale || summaryQuery.data?.isStale);
 
@@ -378,12 +342,6 @@ function Dashboard() {
             </div>
           )}
 
-          <section aria-label="Schedule summary" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <MetricCard testId="metric-sailings" label="Sailings in view" value={isInitialLoading ? '—' : formatCount(summaryQuery.data?.count)} detail="Current cached departures" icon={<Waves className="h-4 w-4" />} />
-            <MetricCard testId="metric-destinations" label="Destinations" value={isInitialLoading ? '—' : formatCount(summaryQuery.data?.destinationCount)} detail="Unique ports ahead" icon={<ArrowDownToLine className="h-4 w-4" />} tone="amber" />
-            <MetricCard testId="metric-next-departure" label="Next departure" value={isInitialLoading ? '—' : formatDate(summaryQuery.data?.nextDeparture, true)} detail={summaryQuery.data?.nextDeparture ? 'Earliest scheduled sailing' : 'No date currently available'} icon={<Clock3 className="h-4 w-4" />} />
-          </section>
-
           <section className="mt-9">
             <div className="mb-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
               <div>
@@ -528,7 +486,7 @@ function Dashboard() {
                 <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">We couldn’t load the latest cached schedule. Check the connection and try refreshing the board.</p>
                 <button data-testid="button-retry-schedules" type="button" onClick={() => { schedulesQuery.refetch(); summaryQuery.refetch(); }} className="mt-5 rounded-lg bg-sidebar px-4 py-2 text-sm font-bold text-sidebar-foreground transition-colors hover:bg-sidebar/90">Try again</button>
               </div>
-            ) : isInitialLoading ? <ScheduleSkeleton /> : schedules.length === 0 ? (
+            ) : schedulesQuery.isLoading ? <ScheduleSkeleton /> : schedules.length === 0 ? (
               <div data-testid="status-schedules-empty" className="rounded-2xl border border-dashed border-border bg-card/60 px-6 py-14 text-center">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-primary"><Filter className="h-5 w-5" /></div>
                 <h3 className="mt-4 font-bold">No sailings match this view</h3>
