@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   CircleAlert,
   Clock3,
-  Container,
   Database,
   ExternalLink,
   FileDown,
@@ -379,10 +378,9 @@ function Dashboard() {
             </div>
           )}
 
-          <section aria-label="Schedule summary" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <section aria-label="Schedule summary" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <MetricCard testId="metric-sailings" label="Sailings in view" value={isInitialLoading ? '—' : formatCount(summaryQuery.data?.count)} detail="Current cached departures" icon={<Waves className="h-4 w-4" />} />
             <MetricCard testId="metric-destinations" label="Destinations" value={isInitialLoading ? '—' : formatCount(summaryQuery.data?.destinationCount)} detail="Unique ports ahead" icon={<ArrowDownToLine className="h-4 w-4" />} tone="amber" />
-            <MetricCard testId="metric-vessels" label="Vessels" value={isInitialLoading ? '—' : formatCount(summaryQuery.data?.vesselCount)} detail="Ships on the board" icon={<Container className="h-4 w-4" />} tone="ink" />
             <MetricCard testId="metric-next-departure" label="Next departure" value={isInitialLoading ? '—' : formatDate(summaryQuery.data?.nextDeparture, true)} detail={summaryQuery.data?.nextDeparture ? 'Earliest scheduled sailing' : 'No date currently available'} icon={<Clock3 className="h-4 w-4" />} />
           </section>
 
