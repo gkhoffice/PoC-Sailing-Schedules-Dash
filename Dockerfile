@@ -26,7 +26,7 @@ FROM workspace AS api-build
 RUN pnpm --filter @workspace/api-server run build \
   && pnpm --filter @workspace/api-server deploy --legacy --prod /out/api-server
 
-FROM mcr.microsoft.com/playwright:v1.63.0-noble AS api
+FROM mcr.microsoft.com/playwright:v1.64.1-noble AS api
 
 ENV NODE_ENV=production \
     PORT=8080 \

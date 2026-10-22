@@ -1,5 +1,6 @@
 import { chromium, type APIRequestContext, type Page } from "playwright";
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import type { NormalizedSchedule } from "./schedule-store";
 import { logger } from "./logger";
 
@@ -14,6 +15,9 @@ const MAERSK_CONSUMER_KEY = "uXe7bxTHLY0yY0e8jnS6kotShkLuAAqG";
 const MAERSK_PORT_LOUIS_GEO_ID = "2UNE2GAU89K73";
 const MAERSK_BOOKING_URL = MAERSK_SCHEDULE_URL;
 const MAERSK_LOOKAHEAD_DAYS = 56;
+const CHROMIUM_EXECUTABLE_PATH =
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ||
+  (existsSync("/repl/tools/bin/chromium") ? "/repl/tools/bin/chromium" : undefined);
 
 type JsonValue = Record<string, unknown> | unknown[];
 
@@ -420,7 +424,7 @@ async function submitSearch(page: Page): Promise<void> {
 export async function scrapeMscSchedules(): Promise<NormalizedSchedule[]> {
   const browser = await chromium.launch({
     headless: true,
-    executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
+    executablePath: CHROMIUM_EXECUTABLE_PATH,
     args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-blink-features=AutomationControlled"],
   });
   const page = await browser.newPage({
@@ -647,7 +651,7 @@ export async function refreshMaerskSchedules(): Promise<NormalizedSchedule[]> {
 
   const browser = await chromium.launch({
     headless: true,
-    executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
+    executablePath: CHROMIUM_EXECUTABLE_PATH,
     args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-blink-features=AutomationControlled"],
   });
   const page = await browser.newPage({
