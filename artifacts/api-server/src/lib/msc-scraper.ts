@@ -48,15 +48,6 @@ const fieldValue = (record: Record<string, unknown>, aliases: string[]): string 
 const dateValue = (value: string | null): string | null => {
   if (!value) return null;
   const normalized = value.trim();
-  const dayFirst = normalized.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
-  if (dayFirst) {
-    const [, day, month, year] = dayFirst;
-    const numericDay = Number(day);
-    const numericMonth = Number(month);
-    if (numericDay >= 1 && numericDay <= 31 && numericMonth >= 1 && numericMonth <= 12) {
-      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-    }
-  }
   const timestamp = Date.parse(normalized);
   if (!Number.isFinite(timestamp)) return normalized;
   return new Date(timestamp).toISOString().slice(0, 10);

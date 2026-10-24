@@ -8,6 +8,7 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "scrape:cma-cgm": "tsx scripts/cma-cgm.ts",
     "test": "node --import tsx --test test/**/*.test.ts"
   },
   "dependencies": {

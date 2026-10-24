@@ -1,4 +1,5 @@
 import { chromium, type Locator, type Page } from "playwright";
+import { existsSync } from "node:fs";
 import type { NormalizedSchedule } from "./schedule-store";
 import { addDays, normalizeRecord } from "./msc-scraper";
 import { logger } from "./logger";
@@ -11,7 +12,7 @@ const SEARCH_PERIOD_WEEKS = 5;
 const SEARCH_PERIOD_DAYS = SEARCH_PERIOD_WEEKS * 7;
 const CHROMIUM_EXECUTABLE_PATH =
   process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ||
-  (process.platform === "linux" && process.env.REPL_ID && "/repl/tools/bin/chromium");
+  (existsSync("/repl/tools/bin/chromium") ? "/repl/tools/bin/chromium" : undefined);
 
 function collectScheduleRecords(value: unknown, records: Record<string, unknown>[]): void {
   if (Array.isArray(value)) {
@@ -40,11 +41,26 @@ export function parseCmaCgmSchedules(
 
   const unique = new Map<string, NormalizedSchedule>();
   records.forEach((record, index) => {
-    const normalized = normalizeRecord(record, index, {
+    const withLocalDates = Object.fromEntries(
+      Object.entries(record).map(([key, value]) => {
+        if (typeof value !== "string" || !/departure|arrival|etd|eta/i.test(key)) return [key, value];
+        const dayFirst = value.trim().match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+        if (!dayFirst) return [key, value];
+        const [, day, month, year] = dayFirst;
+        return [key, `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`];
+      }),
+    );
+    const normalized = normalizeRecord(withLocalDates, index, {
       carrier: "CMA CGM",
       bookingUrl: CMA_CGM_BOOKING_URL,
     });
-    if (!normalized || normalized.destination === "Any destination") return;
+    if (
+      !normalized ||
+      normalized.destination === "Any destination" ||
+      !normalized.departureDate ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(normalized.departureDate) ||
+      (normalized.vessel === "—" && normalized.voyage === "—")
+    ) return;
 
     unique.set(normalized.id, {
       ...normalized,
@@ -64,8 +80,11 @@ async function findField(page: Page, label: RegExp): Promise<Locator | null> {
     const labeledContainer = visibleLabel.locator(
       'xpath=ancestor::*[.//input or .//textarea or .//*[@role="combobox"]][1]',
     );
-    const nestedField = labeledContainer.locator('input, textarea, [role="combobox"]').first();
-    if (await nestedField.isVisible().catch(() => false)) return nestedField;
+    const nestedFields = labeledContainer.locator("input, textarea");
+    if ((await nestedFields.count()) === 1) {
+      const nestedField = nestedFields.first();
+      if (await nestedField.isVisible().catch(() => false)) return nestedField;
+    }
   }
 
   const fields = page.locator('input, textarea, [role="combobox"]');
@@ -84,9 +103,9 @@ async function findField(page: Page, label: RegExp): Promise<Locator | null> {
       .join(" ");
     const labelText = await field
       .locator("xpath=ancestor::label[1]")
-      .innerText()
+      .innerText({ timeout: 300 })
       .catch(() => "");
-    const nearbyText = await field.locator("xpath=..").innerText().catch(() => "");
+    const nearbyText = await field.locator("xpath=..").innerText({ timeout: 300 }).catch(() => "");
     const exactLabel = label.test(`${attributes} ${labelText}`);
     const nearbyLabel = label.test(nearbyText);
     const score = exactLabel ? 2 : nearbyLabel ? 1 : 0;
@@ -104,6 +123,7 @@ async function fillField(field: Locator, value: string): Promise<void> {
     await field.click();
     await field.press("Control+A");
     if (value) await field.type(value);
+    else await field.press("Backspace");
   }
 }
 
@@ -170,15 +190,17 @@ async function setDestinationToAny(page: Page): Promise<void> {
 }
 
 async function setSearchDate(page: Page): Promise<void> {
-  const date = await findField(page, /^date$|departure date|search date/i);
-  if (!date) return;
+  const date = await findField(page, /\bdate\b/i);
+  if (!date) throw new Error("CMA CGM search date field was not found.");
 
-  const type = await date.getAttribute("type");
   const today = new Date().toISOString().slice(0, 10);
-  try {
-    await date.fill(type === "date" ? today : today);
-  } catch {
-    // The page may provide a date picker with a preselected current date.
+  const placeholder = await date.getAttribute("placeholder");
+  const value = /dd.*mm.*yyyy/i.test(placeholder ?? "")
+    ? today.split("-").reverse().join("/")
+    : today;
+  await date.fill(value);
+  if (!(await date.inputValue().catch(() => ""))) {
+    throw new Error("CMA CGM search date could not be set to today.");
   }
 }
 
@@ -237,7 +259,14 @@ async function setPeriodToFiveWeeks(page: Page): Promise<void> {
         await buttons.nth(minus).click();
         current -= 1;
       }
-      return;
+      const selectedNumbers = await group.locator("*").evaluateAll((elements) =>
+        elements
+          .filter((element) => element.children.length === 0)
+          .map((element) => (element.textContent ?? "").trim())
+          .filter((text) => /^\d{1,2}$/.test(text))
+          .map(Number),
+      );
+      if (selectedNumbers[0] === SEARCH_PERIOD_WEEKS) return;
     } catch {
       // Try a larger field group.
     }
@@ -301,19 +330,38 @@ async function readTableRecords(page: Page): Promise<Record<string, unknown>[]> 
   return records;
 }
 
-export async function scrapeCmaCgmSchedules(): Promise<NormalizedSchedule[]> {
+export async function configureCmaCgmSearch(page: Page): Promise<void> {
+  await acceptCookies(page);
+  await chooseOrigin(page);
+  await setDestinationToAny(page);
+  const departure = page.getByRole("radio", { name: /^departure$/i }).first();
+  if (await departure.isVisible().catch(() => false)) await departure.check();
+  await setSearchDate(page);
+  await setPeriodToFiveWeeks(page);
+}
+
+export async function scrapeCmaCgmSchedules(
+  options: { headless?: boolean } = {},
+): Promise<NormalizedSchedule[]> {
   const browser = await chromium.launch({
-    headless: true,
+    headless: options.headless ?? true,
     executablePath: CHROMIUM_EXECUTABLE_PATH || undefined,
     args: ["--no-sandbox", "--disable-dev-shm-usage"],
   });
   const page = await browser.newPage({ locale: "en-US" });
+  page.setDefaultTimeout(10_000);
   const payloadPromises: Promise<unknown>[] = [];
+  let captureResults = false;
 
   page.on("response", (response) => {
     const contentType = response.headers()["content-type"] ?? "";
-    const url = response.url();
-    if (!/json/i.test(contentType) || !url.startsWith("https://www.cma-cgm.com/")) return;
+    const hostname = new URL(response.url()).hostname;
+    const carrierDomain =
+      hostname === "cma-cgm.com" ||
+      hostname.endsWith(".cma-cgm.com") ||
+      hostname === "cma-cgm.net" ||
+      hostname.endsWith(".cma-cgm.net");
+    if (!captureResults || !/json/i.test(contentType) || !carrierDomain) return;
     payloadPromises.push(response.json().catch(() => null));
   });
 
@@ -330,11 +378,8 @@ export async function scrapeCmaCgmSchedules(): Promise<NormalizedSchedule[]> {
     }
 
     await page.waitForLoadState("networkidle", { timeout: 20_000 }).catch(() => undefined);
-    await acceptCookies(page);
-    await chooseOrigin(page);
-    await setDestinationToAny(page);
-    await setSearchDate(page);
-    await setPeriodToFiveWeeks(page);
+    await configureCmaCgmSearch(page);
+    captureResults = true;
     await submitSearch(page);
     await page.waitForLoadState("networkidle", { timeout: 25_000 }).catch(() => undefined);
     await page.waitForTimeout(1_500);
@@ -346,8 +391,9 @@ export async function scrapeCmaCgmSchedules(): Promise<NormalizedSchedule[]> {
     const throughDate = addDays(fromDate, SEARCH_PERIOD_DAYS);
     const inWindow = schedules.filter(
       (schedule) =>
-        !schedule.departureDate ||
-        (schedule.departureDate >= fromDate && schedule.departureDate <= throughDate),
+        schedule.departureDate &&
+        schedule.departureDate >= fromDate &&
+        schedule.departureDate <= throughDate,
     );
 
     if (!inWindow.length) {
@@ -355,7 +401,6 @@ export async function scrapeCmaCgmSchedules(): Promise<NormalizedSchedule[]> {
         `CMA CGM search returned no recognizable schedules (${payloads.length} JSON responses, ${tableRecords.length} result rows).`,
       );
     }
-    logger.info({ count: inWindow.length, periodWeeks: SEARCH_PERIOD_WEEKS }, "CMA CGM schedule refresh completed");
     return inWindow;
   } finally {
     await browser.close();
