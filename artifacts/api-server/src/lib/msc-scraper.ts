@@ -48,6 +48,15 @@ const fieldValue = (record: Record<string, unknown>, aliases: string[]): string 
 const dateValue = (value: string | null): string | null => {
   if (!value) return null;
   const normalized = value.trim();
+  const dayFirst = normalized.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+  if (dayFirst) {
+    const [, day, month, year] = dayFirst;
+    const numericDay = Number(day);
+    const numericMonth = Number(month);
+    if (numericDay >= 1 && numericDay <= 31 && numericMonth >= 1 && numericMonth <= 12) {
+      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    }
+  }
   const timestamp = Date.parse(normalized);
   if (!Number.isFinite(timestamp)) return normalized;
   return new Date(timestamp).toISOString().slice(0, 10);
@@ -64,7 +73,7 @@ const unwrapRecord = (record: Record<string, unknown>): Record<string, unknown> 
   return record;
 };
 
-function normalizeRecord(
+export function normalizeRecord(
   input: Record<string, unknown>,
   index: number,
   metadata: { carrier?: string; bookingUrl?: string } = {},
@@ -80,12 +89,17 @@ function normalizeRecord(
   const destination =
     fieldValue(merged, [
       "destination",
+      "destinationName",
       "destinationPort",
       "destinationPortName",
       "to",
       "pod",
       "portOfDischarge",
       "dischargePort",
+      "dischargePortName",
+      "arrivalPortName",
+      "arrivalPort",
+      "placeOfDelivery",
     ]) ?? "";
   const origin =
     fieldValue(merged, [
@@ -97,6 +111,9 @@ function normalizeRecord(
       "portOfLoading",
       "loadPort",
       "departurePort",
+      "departurePortName",
+      "fromPort",
+      "placeOfReceipt",
     ]) ?? PORT_LOUIS;
   const originCountry = fieldValue(merged, [
     "originCountry",
@@ -122,6 +139,9 @@ function normalizeRecord(
       "departureDate",
       "etd",
       "estimatedTimeOfDeparture",
+      "estimatedDepartureTime",
+      "estimatedDepartureDateTime",
+      "departureDateTime",
       "departure",
       "sailDate",
       "etdDate",
@@ -132,6 +152,9 @@ function normalizeRecord(
       "arrivalDate",
       "eta",
       "estimatedTimeOfArrival",
+      "estimatedArrivalTime",
+      "estimatedArrivalDateTime",
+      "arrivalDateTime",
       "arrival",
       "etaDate",
     ]),

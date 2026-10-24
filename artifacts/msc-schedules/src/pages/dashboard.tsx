@@ -292,14 +292,14 @@ function Dashboard() {
               <Anchor className="h-4 w-4 text-sidebar-primary" />
               Departure manifest
             </div>
-           <p className="mt-2 pl-7 text-xs font-normal leading-relaxed text-sidebar-foreground/55">MSC and Maersk departures from Mauritius</p>
+           <p className="mt-2 pl-7 text-xs font-normal leading-relaxed text-sidebar-foreground/55">MSC, Maersk, and CMA CGM departures from Mauritius</p>
           </Link>
         </div>
         <div className="border-t border-sidebar-border/70 px-7 py-6">
           <p className="eyebrow text-sidebar-foreground/40">Data source</p>
           <div className="mt-3 flex items-center gap-2 text-xs text-sidebar-foreground/75">
             <span className="h-2 w-2 rounded-full bg-emerald-400" />
-             MSC + Maersk schedule interfaces
+             MSC + Maersk + CMA CGM schedule interfaces
           </div>
           <p data-testid="text-sidebar-origin" className="mt-2 text-xs text-sidebar-foreground/45">Origin locked to Port Louis, MU</p>
         </div>
@@ -347,7 +347,7 @@ function Dashboard() {
               <div>
                 <p className="eyebrow text-muted-foreground">Departure manifest</p>
                 <div className="mt-1 flex flex-wrap items-center gap-3">
-                   <h2 className="text-xl font-bold tracking-[-0.03em]">MSC + Maersk sailings</h2>
+                   <h2 className="text-xl font-bold tracking-[-0.03em]">MSC + Maersk + CMA CGM sailings</h2>
                   <span data-testid="text-schedule-count" className="rounded-full bg-secondary px-2.5 py-1 font-mono text-[0.68rem] text-secondary-foreground">{formatCount(schedules.length)} total</span>
                 </div>
               </div>

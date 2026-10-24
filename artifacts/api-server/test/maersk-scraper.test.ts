@@ -4,6 +4,7 @@ import {
   buildMaerskRoutingRequest,
   parseMaerskRoutes,
 } from "../src/lib/msc-scraper";
+import { parseCmaCgmSchedules } from "../src/lib/cma-cgm-scraper";
 import {
   mergeSchedules,
   mergeSchedulesWithFallback,
@@ -115,6 +116,41 @@ test("Maersk Singapore routing keeps the 30 October departure", () => {
   assert.equal(schedules[0].vessel, "MAERSK STOCKHOLM");
 });
 
+test("CMA CGM route results normalize Port Louis sailings", () => {
+  const schedules = parseCmaCgmSchedules([
+    {
+      data: {
+        routes: [
+          {
+            originPortName: "Port Louis",
+            originCountryName: "Mauritius",
+            destinationPortName: "Singapore",
+            destinationCountryName: "Singapore",
+            vesselName: "CMA CGM Fixture",
+            voyageNumber: "012N",
+            departureDate: "2026-10-30T08:00:00Z",
+            arrivalDate: "2026-11-10T12:00:00Z",
+            transitTime: "11 days",
+            serviceName: "Indian Ocean Service",
+          },
+        ],
+      },
+    },
+  ]);
+
+  assert.equal(schedules.length, 1);
+  assert.equal(schedules[0].carrier, "CMA CGM");
+  assert.equal(schedules[0].bookingUrl, "https://www.cma-cgm.com/ebusiness/schedules/routing-finder");
+  assert.equal(schedules[0].origin, "Port Louis");
+  assert.equal(schedules[0].originCountry, "Mauritius");
+  assert.equal(schedules[0].destination, "Singapore");
+  assert.equal(schedules[0].vessel, "CMA CGM Fixture");
+  assert.equal(schedules[0].voyage, "012N");
+  assert.equal(schedules[0].departureDate, "2026-10-30");
+  assert.equal(schedules[0].arrivalDate, "2026-11-10");
+  assert.equal(schedules[0].service, "Indian Ocean Service");
+});
+
 test("merging sources removes duplicate rows without collapsing carrier identity", () => {
   const maerskSchedule = {
     ...mscSchedule,
@@ -135,9 +171,21 @@ test("a failed source falls back to its cached rows while the other source refre
     carrier: "Maersk",
     bookingUrl: "https://www.maersk.com/schedules/pointToPoint",
   };
+  const cmaCgmSchedule: NormalizedSchedule = {
+    ...mscSchedule,
+    id: "cma-cgm-1",
+    carrier: "CMA CGM",
+    bookingUrl: "https://www.cma-cgm.com/ebusiness/schedules/routing-finder",
+  };
   const refreshedMsc = { ...mscSchedule, id: "msc-new" };
 
-  const merged = mergeSchedulesWithFallback([refreshedMsc], null, [mscSchedule, maerskSchedule]);
-  assert.deepEqual(merged.map((schedule) => schedule.id), ["msc-new", "maersk-1"]);
+  const merged = mergeSchedulesWithFallback(
+    [refreshedMsc],
+    null,
+    null,
+    [mscSchedule, maerskSchedule, cmaCgmSchedule],
+  );
+  assert.deepEqual(merged.map((schedule) => schedule.id), ["msc-new", "maersk-1", "cma-cgm-1"]);
   assert.equal(merged[1].carrier, "Maersk");
+  assert.equal(merged[2].carrier, "CMA CGM");
 });
