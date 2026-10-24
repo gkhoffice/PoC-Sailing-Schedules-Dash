@@ -1,13 +1,9 @@
-import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Anchor,
-  ArrowDownToLine,
-  ArrowUpRight,
   CheckCircle2,
   CircleAlert,
-  Clock3,
-  Container,
   Database,
   ExternalLink,
   FileDown,
@@ -17,7 +13,6 @@ import {
   RefreshCw,
   Search,
   ShipWheel,
-  Waves,
   X,
 } from 'lucide-react';
 import {
@@ -86,36 +81,23 @@ const formatUpdated = (value: string | null | undefined) => {
 };
 
 const formatCount = (value: number | undefined) => new Intl.NumberFormat('en-US').format(value ?? 0);
-function MetricCard({
-  label,
-  value,
-  detail,
-  icon,
-  tone = 'teal',
-  testId,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  icon: ReactNode;
-  tone?: 'teal' | 'amber' | 'ink';
-  testId: string;
-}) {
-  return (
-    <article data-testid={testId} className="group relative overflow-hidden rounded-2xl border border-border/70 bg-card/90 p-5 shadow-[0_8px_24px_hsl(202_50%_17%/0.04)] transition-transform duration-200 hover:-translate-y-0.5">
-      <div className={`absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full ${tone === 'amber' ? 'bg-accent/15' : tone === 'ink' ? 'bg-sidebar/10' : 'bg-primary/10'}`} />
-      <div className="relative flex items-start justify-between">
-        <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${tone === 'amber' ? 'bg-accent/20 text-amber-800' : tone === 'ink' ? 'bg-sidebar/10 text-sidebar' : 'bg-primary/12 text-primary'}`}>
-          {icon}
-        </span>
-        <ArrowUpRight className="h-4 w-4 text-muted-foreground/50 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-      </div>
-      <p className="relative mt-5 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
-      <p data-testid={`${testId}-value`} className="relative mt-1 font-mono text-2xl font-medium tracking-tight text-foreground">{value}</p>
-      <p className="relative mt-1 text-xs text-muted-foreground">{detail}</p>
-    </article>
-  );
-}
+
+const getPaginationItems = (currentPage: number, totalPages: number) => {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const items: Array<number | 'ellipsis-left' | 'ellipsis-right'> = [1];
+  const startPage = Math.max(2, currentPage - 1);
+  const endPage = Math.min(totalPages - 1, currentPage + 1);
+
+  if (startPage > 2) items.push('ellipsis-left');
+  for (let page = startPage; page <= endPage; page += 1) items.push(page);
+  if (endPage < totalPages - 1) items.push('ellipsis-right');
+  items.push(totalPages);
+
+  return items;
+};
 
 function ScheduleSkeleton() {
   return (
@@ -139,6 +121,8 @@ function Dashboard() {
   const [refreshMessage, setRefreshMessage] = useState('');
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
   const [exportFailure, setExportFailure] = useState<ExportFailure | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -146,6 +130,7 @@ function Dashboard() {
     setFilters(initialFilters);
     setDestinationInput('');
     setShowFilters(false);
+    setCurrentPage(1);
   }, [initialFilters]);
 
   const params = useMemo(() => ({
@@ -159,6 +144,12 @@ function Dashboard() {
   const summaryQuery = useGetScheduleSummary();
   const refreshMutation = useRefreshSchedules();
   const schedules = schedulesQuery.data?.schedules ?? [];
+  const totalPages = Math.max(1, Math.ceil(schedules.length / pageSize));
+  const activePage = Math.min(currentPage, totalPages);
+  const firstVisibleRow = schedules.length ? (activePage - 1) * pageSize + 1 : 0;
+  const lastVisibleRow = Math.min(activePage * pageSize, schedules.length);
+  const visibleSchedules = schedules.slice(firstVisibleRow - 1, lastVisibleRow);
+  const paginationItems = getPaginationItems(activePage, totalPages);
   const filterOptions = useMemo(() => {
     const options = new Map<string, FilterOption>();
     const addOption = (value: string | null | undefined, kind: FilterOption['kind']) => {
@@ -189,14 +180,18 @@ function Dashboard() {
     Boolean(filters.departureTo),
   ].filter(Boolean).length;
   const hasFilters = activeFilterCount > 0;
-  const isInitialLoading = schedulesQuery.isLoading || summaryQuery.isLoading;
   const isError = schedulesQuery.isError || summaryQuery.isError;
   const stale = Boolean(schedulesQuery.data?.isStale || summaryQuery.data?.isStale);
+
+  useEffect(() => {
+    if (currentPage !== activePage) setCurrentPage(activePage);
+  }, [activePage, currentPage]);
 
   const clearFilters = () => {
     setDraft({});
     setDestinationInput('');
     setFilters({});
+    setCurrentPage(1);
     if (location.includes('?')) setLocation('/manifest');
   };
 
@@ -208,6 +203,7 @@ function Dashboard() {
     if (draft.departureTo) query.set('departureTo', draft.departureTo);
     const queryString = query.toString();
     setFilters(draft);
+    setCurrentPage(1);
     setShowFilters(false);
     setLocation(`/manifest${queryString ? `?${queryString}` : ''}`);
   };
@@ -296,14 +292,14 @@ function Dashboard() {
               <Anchor className="h-4 w-4 text-sidebar-primary" />
               Departure manifest
             </div>
-           <p className="mt-2 pl-7 text-xs font-normal leading-relaxed text-sidebar-foreground/55">MSC and Maersk departures from Mauritius</p>
+           <p className="mt-2 pl-7 text-xs font-normal leading-relaxed text-sidebar-foreground/55">MSC, Maersk, and CMA CGM departures from Mauritius</p>
           </Link>
         </div>
         <div className="border-t border-sidebar-border/70 px-7 py-6">
           <p className="eyebrow text-sidebar-foreground/40">Data source</p>
           <div className="mt-3 flex items-center gap-2 text-xs text-sidebar-foreground/75">
             <span className="h-2 w-2 rounded-full bg-emerald-400" />
-             MSC + Maersk schedule interfaces
+             MSC + Maersk + CMA CGM schedule interfaces
           </div>
           <p data-testid="text-sidebar-origin" className="mt-2 text-xs text-sidebar-foreground/45">Origin locked to Port Louis, MU</p>
         </div>
@@ -346,20 +342,13 @@ function Dashboard() {
             </div>
           )}
 
-          <section aria-label="Schedule summary" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <MetricCard testId="metric-sailings" label="Sailings in view" value={isInitialLoading ? '—' : formatCount(summaryQuery.data?.count)} detail="Current cached departures" icon={<Waves className="h-4 w-4" />} />
-            <MetricCard testId="metric-destinations" label="Destinations" value={isInitialLoading ? '—' : formatCount(summaryQuery.data?.destinationCount)} detail="Unique ports ahead" icon={<ArrowDownToLine className="h-4 w-4" />} tone="amber" />
-            <MetricCard testId="metric-vessels" label="Vessels" value={isInitialLoading ? '—' : formatCount(summaryQuery.data?.vesselCount)} detail="Ships on the board" icon={<Container className="h-4 w-4" />} tone="ink" />
-            <MetricCard testId="metric-next-departure" label="Next departure" value={isInitialLoading ? '—' : formatDate(summaryQuery.data?.nextDeparture, true)} detail={summaryQuery.data?.nextDeparture ? 'Earliest scheduled sailing' : 'No date currently available'} icon={<Clock3 className="h-4 w-4" />} />
-          </section>
-
           <section className="mt-9">
             <div className="mb-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
               <div>
                 <p className="eyebrow text-muted-foreground">Departure manifest</p>
                 <div className="mt-1 flex flex-wrap items-center gap-3">
-                   <h2 className="text-xl font-bold tracking-[-0.03em]">MSC + Maersk sailings</h2>
-                  <span data-testid="text-schedule-count" className="rounded-full bg-secondary px-2.5 py-1 font-mono text-[0.68rem] text-secondary-foreground">{formatCount(schedules.length)} shown</span>
+                   <h2 className="text-xl font-bold tracking-[-0.03em]">MSC + Maersk + CMA CGM sailings</h2>
+                  <span data-testid="text-schedule-count" className="rounded-full bg-secondary px-2.5 py-1 font-mono text-[0.68rem] text-secondary-foreground">{formatCount(schedules.length)} total</span>
                 </div>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
@@ -370,7 +359,7 @@ function Dashboard() {
                    onClick={() => void exportManifest('pdf')}
                    disabled={!schedules.length || isExporting}
                    aria-busy={exporting === 'pdf'}
-                   title={exporting === 'pdf' ? 'Generating PDF export' : 'Export visible departures as PDF'}
+                   title={exporting === 'pdf' ? 'Generating PDF export' : 'Export all matching departures as PDF'}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-45"
                 >
                    {exporting === 'pdf' ? <RefreshCw className="h-3.5 w-3.5 animate-spin text-destructive" /> : <FileText className="h-3.5 w-3.5 text-destructive" />}
@@ -382,7 +371,7 @@ function Dashboard() {
                    onClick={() => void exportManifest('csv')}
                    disabled={!schedules.length || isExporting}
                    aria-busy={exporting === 'csv'}
-                   title={exporting === 'csv' ? 'Generating CSV export' : 'Export visible departures as CSV'}
+                   title={exporting === 'csv' ? 'Generating CSV export' : 'Export all matching departures as CSV'}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-45"
                 >
                    {exporting === 'csv' ? <RefreshCw className="h-3.5 w-3.5 animate-spin text-emerald-700" /> : <FileDown className="h-3.5 w-3.5 text-emerald-700" />}
@@ -394,7 +383,7 @@ function Dashboard() {
                    onClick={() => void exportManifest('xlsx')}
                    disabled={!schedules.length || isExporting}
                    aria-busy={exporting === 'xlsx'}
-                   title={exporting === 'xlsx' ? 'Generating XLSX export' : 'Export visible departures as XLSX'}
+                   title={exporting === 'xlsx' ? 'Generating XLSX export' : 'Export all matching departures as XLSX'}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-45"
                 >
                    {exporting === 'xlsx' ? <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary" /> : <FileSpreadsheet className="h-3.5 w-3.5 text-primary" />}
@@ -497,7 +486,7 @@ function Dashboard() {
                 <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">We couldn’t load the latest cached schedule. Check the connection and try refreshing the board.</p>
                 <button data-testid="button-retry-schedules" type="button" onClick={() => { schedulesQuery.refetch(); summaryQuery.refetch(); }} className="mt-5 rounded-lg bg-sidebar px-4 py-2 text-sm font-bold text-sidebar-foreground transition-colors hover:bg-sidebar/90">Try again</button>
               </div>
-            ) : isInitialLoading ? <ScheduleSkeleton /> : schedules.length === 0 ? (
+            ) : schedulesQuery.isLoading ? <ScheduleSkeleton /> : schedules.length === 0 ? (
               <div data-testid="status-schedules-empty" className="rounded-2xl border border-dashed border-border bg-card/60 px-6 py-14 text-center">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-primary"><Filter className="h-5 w-5" /></div>
                 <h3 className="mt-4 font-bold">No sailings match this view</h3>
@@ -510,7 +499,7 @@ function Dashboard() {
                   <span>Destination</span><span>Vessel / voyage</span><span>Departure</span><span>Arrival</span><span>Transit</span><span className="text-right">Book</span>
                 </div>
                 <div className="divide-y divide-border/60">
-                  {schedules.map((schedule, index) => (
+                  {visibleSchedules.map((schedule, index) => (
                     <article data-testid={`row-schedule-${schedule.id}`} key={schedule.id} className="stagger-in grid gap-4 px-4 py-5 transition-colors duration-200 hover:bg-primary/[0.035] md:grid-cols-[1.3fr_1fr_0.8fr_0.8fr_0.65fr_auto] md:items-center md:px-5" style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}>
                       <div className="route-line pl-5">
                         <div className="flex items-center gap-2">
@@ -538,6 +527,90 @@ function Dashboard() {
                       </a>
                     </article>
                   ))}
+                </div>
+                <div className="flex flex-col gap-3 border-t border-border/70 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                      <span>Rows per page</span>
+                      <select
+                        data-testid="select-page-size"
+                        aria-label="Rows per page"
+                        value={pageSize}
+                        onChange={(event) => {
+                          setPageSize(Number(event.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="h-9 rounded-md border border-input bg-card px-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                      >
+                        {[10, 25, 50].map((size) => (
+                          <option key={size} value={size}>{size}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <span
+                      data-testid="text-pagination-range"
+                      aria-live="polite"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Showing {formatCount(firstVisibleRow)}–{formatCount(lastVisibleRow)} of {formatCount(schedules.length)} sailings
+                    </span>
+                  </div>
+
+                  {totalPages > 1 && (
+                    <nav
+                      aria-label="Manifest pages"
+                      data-testid="manifest-pagination"
+                      className="flex flex-wrap items-center justify-start gap-1 sm:justify-end"
+                    >
+                      <button
+                        type="button"
+                        aria-label="Previous page"
+                        data-testid="button-previous-page"
+                        onClick={() => setCurrentPage(activePage - 1)}
+                        disabled={activePage === 1}
+                        className="h-9 rounded-md border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-45"
+                      >
+                        Previous
+                      </button>
+                      {paginationItems.map((item) => (
+                        typeof item === 'number' ? (
+                          <button
+                            key={item}
+                            type="button"
+                            aria-label={`Page ${item}`}
+                            aria-current={activePage === item ? 'page' : undefined}
+                            data-testid={`button-page-${item}`}
+                            onClick={() => setCurrentPage(item)}
+                            className={`h-9 min-w-9 rounded-md border px-2 text-xs font-semibold transition-colors ${
+                              activePage === item
+                                ? 'border-primary bg-primary/10 text-primary'
+                                : 'border-transparent text-foreground hover:border-border hover:bg-secondary'
+                            }`}
+                          >
+                            {item}
+                          </button>
+                        ) : (
+                          <span
+                            key={item}
+                            aria-hidden="true"
+                            className="px-1 text-sm text-muted-foreground"
+                          >
+                            …
+                          </span>
+                        )
+                      ))}
+                      <button
+                        type="button"
+                        aria-label="Next page"
+                        data-testid="button-next-page"
+                        onClick={() => setCurrentPage(activePage + 1)}
+                        disabled={activePage === totalPages}
+                        className="h-9 rounded-md border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-45"
+                      >
+                        Next
+                      </button>
+                    </nav>
+                  )}
                 </div>
               </div>
             )}

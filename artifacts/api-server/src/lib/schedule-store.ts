@@ -31,7 +31,7 @@ const cachePath = path.resolve(
 const emptyCache = (): ScheduleCache => ({
   schedules: [],
   lastUpdated: null,
-  source: "MSC + Maersk schedule interfaces",
+  source: "MSC + Maersk + CMA CGM schedule interfaces",
 });
 
 export async function readScheduleCache(): Promise<ScheduleCache> {
@@ -63,13 +63,12 @@ export async function readScheduleCache(): Promise<ScheduleCache> {
   }
 }
 
-export function mergeSchedules(
-  mscSchedules: NormalizedSchedule[],
-  maerskSchedules: NormalizedSchedule[],
-): NormalizedSchedule[] {
+export function mergeSchedules(...scheduleSources: NormalizedSchedule[][]): NormalizedSchedule[] {
   const unique = new Map<string, NormalizedSchedule>();
-  for (const schedule of [...mscSchedules, ...maerskSchedules]) {
-    unique.set(schedule.id, schedule);
+  for (const schedules of scheduleSources) {
+    for (const schedule of schedules) {
+      unique.set(schedule.id, schedule);
+    }
   }
   return [...unique.values()];
 }
@@ -77,11 +76,13 @@ export function mergeSchedules(
 export function mergeSchedulesWithFallback(
   mscSchedules: NormalizedSchedule[] | null,
   maerskSchedules: NormalizedSchedule[] | null,
+  cmaCgmSchedules: NormalizedSchedule[] | null,
   cachedSchedules: NormalizedSchedule[],
 ): NormalizedSchedule[] {
   return mergeSchedules(
     mscSchedules ?? cachedSchedules.filter((schedule) => schedule.carrier === "MSC"),
     maerskSchedules ?? cachedSchedules.filter((schedule) => schedule.carrier === "Maersk"),
+    cmaCgmSchedules ?? cachedSchedules.filter((schedule) => schedule.carrier === "CMA CGM"),
   );
 }
 

@@ -1,5 +1,6 @@
 import { chromium, type APIRequestContext, type Page } from "playwright";
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import type { NormalizedSchedule } from "./schedule-store";
 import { logger } from "./logger";
 
@@ -14,6 +15,9 @@ const MAERSK_CONSUMER_KEY = "uXe7bxTHLY0yY0e8jnS6kotShkLuAAqG";
 const MAERSK_PORT_LOUIS_GEO_ID = "2UNE2GAU89K73";
 const MAERSK_BOOKING_URL = MAERSK_SCHEDULE_URL;
 const MAERSK_LOOKAHEAD_DAYS = 56;
+const CHROMIUM_EXECUTABLE_PATH =
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ||
+  (existsSync("/repl/tools/bin/chromium") ? "/repl/tools/bin/chromium" : undefined);
 
 type JsonValue = Record<string, unknown> | unknown[];
 
@@ -60,7 +64,7 @@ const unwrapRecord = (record: Record<string, unknown>): Record<string, unknown> 
   return record;
 };
 
-function normalizeRecord(
+export function normalizeRecord(
   input: Record<string, unknown>,
   index: number,
   metadata: { carrier?: string; bookingUrl?: string } = {},
@@ -76,12 +80,17 @@ function normalizeRecord(
   const destination =
     fieldValue(merged, [
       "destination",
+      "destinationName",
       "destinationPort",
       "destinationPortName",
       "to",
       "pod",
       "portOfDischarge",
       "dischargePort",
+      "dischargePortName",
+      "arrivalPortName",
+      "arrivalPort",
+      "placeOfDelivery",
     ]) ?? "";
   const origin =
     fieldValue(merged, [
@@ -93,6 +102,9 @@ function normalizeRecord(
       "portOfLoading",
       "loadPort",
       "departurePort",
+      "departurePortName",
+      "fromPort",
+      "placeOfReceipt",
     ]) ?? PORT_LOUIS;
   const originCountry = fieldValue(merged, [
     "originCountry",
@@ -118,6 +130,9 @@ function normalizeRecord(
       "departureDate",
       "etd",
       "estimatedTimeOfDeparture",
+      "estimatedDepartureTime",
+      "estimatedDepartureDateTime",
+      "departureDateTime",
       "departure",
       "sailDate",
       "etdDate",
@@ -128,6 +143,9 @@ function normalizeRecord(
       "arrivalDate",
       "eta",
       "estimatedTimeOfArrival",
+      "estimatedArrivalTime",
+      "estimatedArrivalDateTime",
+      "arrivalDateTime",
       "arrival",
       "etaDate",
     ]),
@@ -420,7 +438,7 @@ async function submitSearch(page: Page): Promise<void> {
 export async function scrapeMscSchedules(): Promise<NormalizedSchedule[]> {
   const browser = await chromium.launch({
     headless: true,
-    executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
+    executablePath: CHROMIUM_EXECUTABLE_PATH,
     args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-blink-features=AutomationControlled"],
   });
   const page = await browser.newPage({
@@ -647,7 +665,7 @@ export async function refreshMaerskSchedules(): Promise<NormalizedSchedule[]> {
 
   const browser = await chromium.launch({
     headless: true,
-    executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
+    executablePath: CHROMIUM_EXECUTABLE_PATH,
     args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-blink-features=AutomationControlled"],
   });
   const page = await browser.newPage({

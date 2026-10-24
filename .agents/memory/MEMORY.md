@@ -3,3 +3,4 @@
 - [Maersk schedule API](maersk-schedule-api.md) — enumerate destinations, cap routing windows at eight weeks, and use first-leg departure/final-leg arrival for multi-leg routes.
 - [Artifact-local cache paths](artifact-local-cache-paths.md) — production working directories may differ from development; resolve bundled local data from the artifact/module location.
 - [PDF fallback encoding](pdf-fallback-encoding.md) — jsPDF standard-font em dashes are WinAnsi byte 0x97 in raw downloaded PDFs.
+- [CMA CGM source scope](cma-cgm-source-scope.md) — use normal Playwright for Port Louis to any destination over five weeks; support testing outside Replit.

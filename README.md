@@ -43,6 +43,58 @@ From the repository root:
 docker compose build
 ```
 
+## Test the CMA CGM Playwright workflow
+
+The application's **Refresh data** action also attempts CMA CGM's Routing Finder:
+Port Louis, Mauritius → any destination (blank destination), departing in the next
+five weeks. It uses ordinary browser controls, with no anti-bot bypass.
+If CMA CGM rejects the request, existing cached CMA CGM rows are retained and
+MSC/Maersk refreshes can still complete.
+
+To test only CMA CGM from your own development machine, install workspace
+dependencies and the matching browser, then run:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm --filter @workspace/api-server exec playwright install chromium
+pnpm --filter @workspace/api-server run scrape:cma-cgm
+```
+
+On a Linux machine, Playwright may also require its documented Chromium system
+dependencies. You can point `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` at an existing
+compatible Chromium installation instead. The Docker image already includes
+the matching browser and dependencies.
+
+To watch the form being filled on a machine with a graphical desktop:
+
+```sh
+pnpm --filter @workspace/api-server run scrape:cma-cgm --headed
+```
+
+The command prints normalized schedule JSON on success and exits nonzero with
+an error on failure; it does not change the application cache. No API key is
+required by this browser workflow. Live CMA CGM selectors and response formats
+remain unverified here because this environment receives HTTP 403. If its form
+requires a destination, the workflow must be adjusted after inspecting that
+validation; it does not invent an all-destinations API request.
+
+## Deploy on Render
+
+Render starts one Docker web service, not the multi-service Compose stack. The
+Dockerfile's final `render` target therefore serves both the frontend and API
+from the same container. It defaults to port `10000` and honors Render's
+`PORT` environment variable.
+
+In Render, create a **Web Service** using the Docker environment, with the
+repository root as the build context and `./Dockerfile` as the Dockerfile path.
+Do not set an Nginx `API_HOST` or deploy only the `web` target. The API is
+available under `/api`; `/api/healthz` can be used as the health-check path.
+
+To keep schedule refreshes across redeploys, attach a Render persistent disk
+mounted at `/app/data`. Without a disk, the app still starts with the bundled
+schedule cache, but refreshed cache data is not durable across instance
+replacement.
+
 The multi-stage Dockerfile builds the frontend assets and API, then uses an
 Nginx image for the web runtime and the matching Playwright image for API-driven
 carrier refreshes.

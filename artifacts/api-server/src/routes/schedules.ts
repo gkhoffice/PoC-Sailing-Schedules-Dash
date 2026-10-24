@@ -12,9 +12,11 @@ import {
   writeScheduleCache,
 } from "../lib/schedule-store";
 import { refreshMaerskSchedules, refreshMscSchedules } from "../lib/msc-scraper";
+import { refreshCmaCgmSchedules } from "../lib/cma-cgm-scraper";
+import type { NormalizedSchedule } from "../lib/schedule-store";
 
 const router: IRouter = Router();
-let refreshInFlight: Promise<Awaited<ReturnType<typeof refreshMscSchedules>>> | null = null;
+let refreshInFlight: Promise<NormalizedSchedule[]> | null = null;
 
 const buildResponse = async (query: Record<string, unknown>) => {
   const parsed = GetSchedulesQueryParams.safeParse({
@@ -103,9 +105,10 @@ router.post("/schedules/refresh", async (req, res): Promise<void> => {
     if (!refreshInFlight) {
       refreshInFlight = (async () => {
         const existing = await readScheduleCache();
-        const [mscResult, maerskResult] = await Promise.allSettled([
+        const [mscResult, maerskResult, cmaCgmResult] = await Promise.allSettled([
           refreshMscSchedules(),
           refreshMaerskSchedules(),
+          refreshCmaCgmSchedules(),
         ]);
         if (mscResult.status === "rejected") {
           req.log.warn({ err: mscResult.reason }, "MSC schedule refresh failed; retaining cached MSC schedules");
@@ -113,10 +116,17 @@ router.post("/schedules/refresh", async (req, res): Promise<void> => {
         if (maerskResult.status === "rejected") {
           req.log.warn({ err: maerskResult.reason }, "Maersk schedule refresh failed; retaining cached Maersk schedules");
         }
+        if (cmaCgmResult.status === "rejected") {
+          req.log.warn(
+            { err: cmaCgmResult.reason },
+            "CMA CGM schedule refresh failed; retaining cached CMA CGM schedules",
+          );
+        }
 
         const merged = mergeSchedulesWithFallback(
           mscResult.status === "fulfilled" ? mscResult.value : null,
           maerskResult.status === "fulfilled" ? maerskResult.value : null,
+          cmaCgmResult.status === "fulfilled" ? cmaCgmResult.value : null,
           existing.schedules,
         );
         if (!merged.length) throw new Error("No schedule source returned usable data.");
@@ -129,7 +139,7 @@ router.post("/schedules/refresh", async (req, res): Promise<void> => {
     const cache = {
       schedules,
       lastUpdated: new Date().toISOString(),
-      source: "MSC + Maersk schedule interfaces",
+      source: "MSC + Maersk + CMA CGM schedule interfaces",
     };
     await writeScheduleCache(cache);
     res.json(RefreshSchedulesResponse.parse({ ...cache, isStale: false, count: schedules.length }));

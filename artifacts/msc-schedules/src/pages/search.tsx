@@ -200,7 +200,7 @@ function SearchPage() {
           <p className="eyebrow text-sidebar-foreground/40">Data source</p>
           <div className="mt-3 flex items-center gap-2 text-xs text-sidebar-foreground/75">
             <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            MSC + Maersk schedule interfaces
+            MSC + Maersk + CMA CGM schedule interfaces
           </div>
           <p data-testid="text-sidebar-origin" className="mt-2 text-xs text-sidebar-foreground/45">Origin locked to Port Louis, MU</p>
         </div>
@@ -254,7 +254,7 @@ function SearchPage() {
             <div className="max-w-2xl">
               <p className="eyebrow text-primary">Schedule search</p>
               <h2 className="mt-2 text-2xl font-bold tracking-[-0.04em]">Find the next departure that fits</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Search MSC and Maersk sailings from Port Louis by destination or departure window, then open the full departure manifest.</p>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Search MSC, Maersk, and CMA CGM sailings from Port Louis by destination or departure window, then open the full departure manifest.</p>
             </div>
 
             <form data-testid="form-schedule-search" onSubmit={submitSearch} className="mt-7 grid gap-4 rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 md:grid-cols-[1.3fr_1fr_1fr_auto] md:items-start md:p-5">
@@ -326,7 +326,7 @@ function SearchPage() {
 
           <footer className="mt-7 flex flex-col gap-2 border-t border-border/60 pt-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <span data-testid="text-last-updated">Last captured {formatUpdated(summaryQuery.data?.lastUpdated)}</span>
-            <span data-testid="text-source" className="inline-flex items-center gap-1.5">MSC + Maersk schedule interfaces</span>
+            <span data-testid="text-source" className="inline-flex items-center gap-1.5">MSC + Maersk + CMA CGM schedule interfaces</span>
           </footer>
         </div>
       </main>
